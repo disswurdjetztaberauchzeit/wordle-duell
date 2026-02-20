@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Wordle Duell</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #080808;
+    color: #ccc;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 12px;
+  }
+
+  /* ── Typography ───────────────────────────────────────────────── */
+  .vs-title {
+    font-size: 28px;
+    letter-spacing: 12px;
+    font-weight: 700;
+    background: linear-gradient(90deg, #4a9eff, #ff6b8a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+  }
+  .subtitle { color: #555; font-size: 11px; letter-spacing: 4px; margin-top: 4px; text-align: center; }
+
+  /* ── Cards / Panels ───────────────────────────────────────────── */
+  .panel {
+    background: #0a0a0a;
+    border: 1px solid #1a1a1a;
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────────── */
+  button {
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .btn {
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    border-radius: 4px;
+    font-size: 11px;
+    padding: 10px 24px;
+  }
+  .btn:hover { border-color: #666; color: #ccc; }
+  .btn-a { border-color: #1a3a6a; color: #4a9eff; background: #060d1a; }
+  .btn-b { border-color: #6a1a2a; color: #ff6b8a; background: #1a060d; }
+  .btn-go {
+    background: linear-gradient(90deg, #1a3a6a, #6a1a2a);
+    border: 1px solid #555; color: #fff;
+    padding: 12px 40px; font-size: 13px; border-radius: 4px;
+  }
+  .btn-go:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── Inputs ───────────────────────────────────────────────────── */
+  input[type=text], input[type=password] {
+    background: #0a0a0a;
+    border: 1px solid #333;
+    color: #fff;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 3px;
+    width: 100%;
+    outline: none;
+    margin-bottom: 10px;
+  }
+
+  /* ── Upload area ──────────────────────────────────────────────── */
+  .upload-label {
+    display: block;
+    border: 1px dashed #333;
+    border-radius: 6px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 12px;
+    letter-spacing: 1px;
+    color: #444;
+    transition: border-color 0.2s, color 0.2s;
+    white-space: pre-line;
+  }
+  .upload-label:hover { border-color: #555; color: #777; }
+  .upload-label.loaded-a { border-color: #1a3a6a; color: #4a9eff; }
+  .upload-label.loaded-b { border-color: #6a1a2a; color: #ff6b8a; }
+
+  /* ── Grid ─────────────────────────────────────────────────────── */
+  .grid { display: flex; flex-direction: column; gap: 5px; }
+  .grid-row { display: flex; gap: 5px; }
+  .tile {
+    width: 50px; height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700;
+    border-radius: 4px;
+    border: 2px solid #1a1a1a;
+    background: #0d0d0d;
+    color: transparent;
+    transition: background 0.25s, border-color 0.25s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .tile.filled-a  { border-color: #4a9eff; background: #0d1f3a; color: #4a9eff; }
+  .tile.filled-b  { border-color: #ff6b8a; background: #3a0d1a; color: #ff6b8a; }
+  .tile.correct   { background: #2d7a3a; border-color: #4ab855; color: #fff; }
+  .tile.present   { background: #8a6010; border-color: #c89030; color: #fff; }
+  .tile.absent    { background: #1a1a1a; border-color: #1a1a1a; color: #444; }
+
+  /* Mini tiles */
+  .tile.mini { width: 22px; height: 22px; font-size: 9px; border-radius: 2px; }
+
+  /* ── Keyboard ─────────────────────────────────────────────────── */
+  .keyboard { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+  .kb-row { display: flex; gap: 3px; justify-content: center; }
+  .key {
+    background: #1e1e2e; color: #888; border: 1px solid #333;
+    border-radius: 4px; font-weight: 700;
+    width: 28px; height: 36px; font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key.wide-enter { width: 52px; font-size: 8px; }
+  .key.wide-del   { width: 38px; }
+  .key.key-correct { background: #2d7a3a; color: #fff; border-color: #4ab855; }
+  .key.key-present { background: #8a6010; color: #fff; border-color: #c89030; }
+  .key.key-absent  { background: #111; color: #333; border-color: #111; }
+
+  /* ── Splitscreen ──────────────────────────────────────────────── */
+  #play-screen {
+    display: flex;
+    width: 100%;
+    max-width: 900px;
+  }
+  .side {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 10px;
+    border-top: 3px solid;
+  }
+  .side-a { background: #060d1a; border-color: #4a9eff; }
+  .side-b { background: #1a060d; border-color: #ff6b8a; border-left: 1px solid #1a1a1a; }
+
+  /* ── Misc ─────────────────────────────────────────────────────── */
+  .toast {
+    background: #111; border: 1px solid #333; border-radius: 4px;
+    padding: 7px 18px; font-size: 12px; letter-spacing: 1px;
+    color: #ccc; margin-bottom: 10px; text-align: center;
+    animation: fadeDown 0.2s;
+  }
+  .word-chip {
+    background: #111; border: 1px solid #222;
+    border-radius: 3px; padding: 2px 7px;
+    font-size: 10px; cursor: pointer;
+    font-family: monospace;
+    transition: all 0.15s;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; max-height: 110px; overflow-y: auto; margin-bottom: 12px; }
+
+  /* ── Config screen ────────────────────────────────────────────── */
+  #config-screen {
+    background: #0d0d0d;
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 32px;
+    max-width: 540px;
+    width: 100%;
+    margin-bottom: 24px;
+  }
+  #config-screen input[type=text] { letter-spacing: 1px; }
+
+  /* ── Animations ───────────────────────────────────────────────── */
+  @keyframes fadeDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-7px)} 40%{transform:translateX(7px)}
+    60%{transform:translateX(-5px)} 80%{transform:translateX(5px)}
+  }
+  .shake { animation: shake 0.4s; }
+
+  /* ── Result ───────────────────────────────────────────────────── */
+  .result-box {
+    border-radius: 8px;
+    padding: 24px 32px;
+    text-align: center;
+    min-width: 180px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════
+     FIREBASE CONFIG SCREEN  (shown once if not configured)
+═══════════════════════════════════════════════════════════════════ -->
+<div id="config-screen" style="display:none">
+  <div class="vs-title" style="margin-bottom:8px">WORDLE DUELL</div>
+  <div class="subtitle" style="margin-bottom:28px">FIREBASE EINRICHTEN</div>
+
+  <p style="color:#555;font-size:12px;line-height:1.8;margin-bottom:20px;letter-spacing:0.5px">
+    Dieses Spiel benötigt eine kostenlose Firebase-Datenbank,<br>
+    damit beide Spieler von verschiedenen Geräten spielen können.<br><br>
+    <strong style="color:#888">Einmalige Einrichtung (5 Minuten):</strong><br>
+    1. <a href="https://console.firebase.google.com" target="_blank" style="color:#4a9eff">console.firebase.google.com</a> → Neues Projekt erstellen<br>
+    2. „Firestore Database" aktivieren (Testmodus reicht)<br>
+    3. Projekteinstellungen → „Deine Apps" → Web-App hinzufügen<br>
+    4. Die Konfigurationswerte unten eintragen:
+  </p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+    <div>
+      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:4px">API KEY</div>
+      <input type="text" id="cfg-apiKey" placeholder="AIza…"/>
+    </div>
+    <div>
+      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:4px">PROJECT ID</div>
+      <input type="text" id="cfg-projectId" placeholder="mein-projekt-12345"/>
+    </div>
+    <div>
+      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:4px">AUTH DOMAIN</div>
+      <input type="text" id="cfg-authDomain" placeholder="projekt.firebaseapp.com"/>
+    </div>
+    <div>
+      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:4px">APP ID</div>
+      <input type="text" id="cfg-appId" placeholder="1:123…:web:abc…"/>
+    </div>
+  </div>
+
+  <button class="btn-go" style="width:100%;margin-bottom:12px" onclick="saveConfig()">
+    SPEICHERN & STARTEN
+  </button>
+  <div id="cfg-msg" style="color:#e05030;font-size:11px;letter-spacing:1px;text-align:center;min-height:18px"></div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MAIN APP  (hidden until Firebase is ready)
+═══════════════════════════════════════════════════════════════════ -->
+<div id="app" style="display:none;width:100%;max-width:900px;display:none;flex-direction:column;align-items:center">
+
+  <div style="text-align:center;margin-bottom:20px">
+    <div class="vs-title">WORDLE DUELL</div>
+    <div id="phase-label" class="subtitle"></div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none"></div>
+
+  <!-- ── SETUP SCREEN ───────────────────────────────────────────── -->
+  <div id="setup-screen" style="display:none">
+    <div class="subtitle" style="margin-bottom:24px">SCHRITT 1 · WORTLISTEN HOCHLADEN</div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:28px">
+
+      <div class="panel" style="border-color:#1a3a6a;min-width:240px">
+        <div style="color:#4a9eff;font-size:12px;letter-spacing:4px;margin-bottom:14px;font-weight:700">DU</div>
+        <label class="upload-label" id="lbl-a">
+          📂 Wortliste hochladen&#10;(.txt, ein Wort pro Zeile)
+          <input type="file" accept=".txt,.csv" style="display:none" onchange="handleUpload('A',this)"/>
+        </label>
+        <div id="chips-a" class="chips" style="margin-top:8px"></div>
+        <div id="count-a" style="color:#333;font-size:10px;letter-spacing:2px;margin-top:4px"></div>
+      </div>
+
+      <div class="panel" style="border-color:#6a1a2a;min-width:240px">
+        <div style="color:#ff6b8a;font-size:12px;letter-spacing:4px;margin-bottom:14px;font-weight:700">LENA</div>
+        <label class="upload-label" id="lbl-b">
+          📂 Wortliste hochladen&#10;(.txt, ein Wort pro Zeile)
+          <input type="file" accept=".txt,.csv" style="display:none" onchange="handleUpload('B',this)"/>
+        </label>
+        <div id="chips-b" class="chips" style="margin-top:8px"></div>
+        <div id="count-b" style="color:#333;font-size:10px;letter-spacing:2px;margin-top:4px"></div>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <button class="btn-go" id="btn-to-pick" disabled onclick="goToPick()">WEITER → WÖRTER WÄHLEN</button>
+    </div>
+  </div>
+
+  <!-- ── PICK SCREEN ─────────────────────────────────────────────── -->
+  <div id="pick-screen" style="display:none">
+    <div class="subtitle" style="margin-bottom:24px">SCHRITT 2 · WÖRTER WÄHLEN</div>
+
+    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
+      <!-- Du picks for Lena -->
+      <div class="panel" style="border-color:#1a3a6a;min-width:260px;max-width:320px">
+        <div style="color:#4a9eff;font-size:11px;letter-spacing:3px;margin-bottom:14px">
+          DU WÄHLST FÜR LENA
+        </div>
+        <div style="color:#444;font-size:10px;letter-spacing:2px;margin-bottom:6px">AUS DEINER LISTE:</div>
+        <div id="pick-chips-a" class="chips"></div>
+        <div style="color:#444;font-size:10px;letter-spacing:2px;margin-bottom:6px">ODER FREITEXT:</div>
+        <input type="text" id="pick-input-a" placeholder="WORT…" maxlength="12"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')submitPick('A')"/>
+        <div id="pick-msg-a" style="color:#e05030;font-size:10px;min-height:16px;letter-spacing:1px;margin-bottom:6px"></div>
+        <div id="pick-done-a" style="display:none;color:#4ab855;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">
+          ✅ WORT GESETZT — WARTE AUF LENA…
+        </div>
+        <button class="btn btn-a" id="pick-btn-a" style="width:100%" onclick="submitPick('A')">WORT FESTLEGEN →</button>
+      </div>
+
+      <!-- Lena picks for Du -->
+      <div class="panel" style="border-color:#6a1a2a;min-width:260px;max-width:320px">
+        <div style="color:#ff6b8a;font-size:11px;letter-spacing:3px;margin-bottom:14px">
+          LENA WÄHLT FÜR DICH
+        </div>
+        <div style="color:#444;font-size:10px;letter-spacing:2px;margin-bottom:6px">AUS LENAS LISTE:</div>
+        <div id="pick-chips-b" class="chips"></div>
+        <div style="color:#444;font-size:10px;letter-spacing:2px;margin-bottom:6px">ODER FREITEXT:</div>
+        <input type="text" id="pick-input-b" placeholder="WORT…" maxlength="12"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter')submitPick('B')"/>
+        <div id="pick-msg-b" style="color:#e05030;font-size:10px;min-height:16px;letter-spacing:1px;margin-bottom:6px"></div>
+        <div id="pick-done-b" style="display:none;color:#ff6b8a;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">
+          ✅ WORT GESETZT — WARTE AUF DEN ANDEREN…
+        </div>
+        <button class="btn btn-b" id="pick-btn-b" style="width:100%" onclick="submitPick('B')">WORT FESTLEGEN →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PLAY SCREEN ─────────────────────────────────────────────── -->
+  <div id="play-screen" style="display:none">
+    <!-- Side A: Du guesses Lena's word -->
+    <div class="side side-a" id="side-a">
+      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="color:#4a9eff;font-size:12px;font-weight:700;letter-spacing:3px">DU</span>
+        <span id="attempts-a" style="color:#333;font-size:11px"></span>
+      </div>
+      <div style="margin-bottom:10px;opacity:0.65">
+        <div style="color:#333;font-size:9px;letter-spacing:2px;margin-bottom:4px;text-align:center">LENA RÄT…</div>
+        <div id="mini-grid-b" class="grid"></div>
+      </div>
+      <div style="width:100%;height:1px;background:#0f1a2a;margin-bottom:10px"></div>
+      <div id="done-banner-a" style="display:none;border-radius:6px;padding:10px 16px;margin-bottom:10px;text-align:center;font-size:12px;letter-spacing:2px"></div>
+      <div id="main-grid-a" class="grid"></div>
+      <div id="keyboard-a" class="keyboard"></div>
+    </div>
+
+    <!-- Side B: Lena guesses Du's word -->
+    <div class="side side-b" id="side-b">
+      <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="color:#ff6b8a;font-size:12px;font-weight:700;letter-spacing:3px">LENA</span>
+        <span id="attempts-b" style="color:#333;font-size:11px"></span>
+      </div>
+      <div style="margin-bottom:10px;opacity:0.65">
+        <div style="color:#333;font-size:9px;letter-spacing:2px;margin-bottom:4px;text-align:center">DU RÄT…</div>
+        <div id="mini-grid-a" class="grid"></div>
+      </div>
+      <div style="width:100%;height:1px;background:#2a0f1a;margin-bottom:10px"></div>
+      <div id="done-banner-b" style="display:none;border-radius:6px;padding:10px 16px;margin-bottom:10px;text-align:center;font-size:12px;letter-spacing:2px"></div>
+      <div id="main-grid-b" class="grid"></div>
+      <div id="keyboard-b" class="keyboard"></div>
+    </div>
+  </div>
+
+  <!-- ── RESULT SCREEN ───────────────────────────────────────────── -->
+  <div id="result-screen" style="display:none;flex-direction:column;align-items:center">
+    <div style="font-size:20px;letter-spacing:6px;font-weight:700;margin-bottom:24px;text-align:center" id="winner-text"></div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-bottom:28px" id="result-cards"></div>
+    <button class="btn-go" onclick="resetGame()">NEUE RUNDE →</button>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp }             from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+                                     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ══════════════════════════════════════════════════════════════════
+// ① PASTE YOUR FIREBASE CONFIG HERE  (or use the config screen)
+// ══════════════════════════════════════════════════════════════════
+const HARDCODED_CONFIG = {
+  apiKey:            "AIzaSyCCMItvN8RNbnWi_V6KdBmhYwFxl53R9R0",
+  authDomain:        "wordle-duell.firebaseapp.com",
+  projectId:         "wordle-duell",
+  storageBucket:     "wordle-duell.firebasestorage.app",
+  messagingSenderId: "10346209099",
+  appId:             "1:10346209099:web:409827941bd01a5b6c12ce",
+};
+// ══════════════════════════════════════════════════════════════════
+
+const KB_ROWS = [
+  ["Q","W","E","R","T","Z","U","I","O","P","Ü"],
+  ["A","S","D","F","G","H","J","K","L","Ö","Ä"],
+  ["ENTER","Y","X","C","V","B","N","M","⌫"],
+];
+const DUEL_DOC  = "duel/state";
+const WORDS_DOC = "duel/wordlists";
+
+let db, unsubscribe;
+let state = null;         // live Firestore state
+let wordsA = [], wordsB = [];
+let inputA = "", inputB = "";
+let activeKeyboard = null; // "A" or "B" — which side physical keyboard controls
+
+// ─── Firebase init ────────────────────────────────────────────────
+function getConfig() {
+  if (HARDCODED_CONFIG.apiKey) return HARDCODED_CONFIG;
+  const saved = localStorage.getItem("wduel-cfg");
+  return saved ? JSON.parse(saved) : null;
+}
+
+function saveConfig() {
+  const cfg = {
+    apiKey:     document.getElementById("cfg-apiKey").value.trim(),
+    authDomain: document.getElementById("cfg-authDomain").value.trim(),
+    projectId:  document.getElementById("cfg-projectId").value.trim(),
+    appId:      document.getElementById("cfg-appId").value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.projectId) {
+    document.getElementById("cfg-msg").textContent = "API Key und Project ID sind Pflichtfelder.";
+    return;
+  }
+  localStorage.setItem("wduel-cfg", JSON.stringify(cfg));
+  window.location.reload();
+}
+window.saveConfig = saveConfig;
+
+async function initFirebase() {
+  const cfg = getConfig();
+  if (!cfg) { document.getElementById("config-screen").style.display = "block"; return; }
+  try {
+    const app = initializeApp(cfg);
+    db = getFirestore(app);
+    document.getElementById("config-screen").style.display = "none";
+    document.getElementById("app").style.display           = "flex";
+    await loadWordLists();
+    subscribeToState();
+  } catch(e) {
+    document.getElementById("config-screen").style.display = "block";
+    document.getElementById("cfg-msg").textContent = "Fehler: " + e.message;
+  }
+}
+
+// ─── Firestore helpers ────────────────────────────────────────────
+async function readDoc(path) {
+  const [col, id] = path.split("/");
+  const snap = await getDoc(doc(db, col, id));
+  return snap.exists() ? snap.data() : null;
+}
+async function writeDoc(path, data) {
+  const [col, id] = path.split("/");
+  await setDoc(doc(db, col, id), data);
+}
+
+function subscribeToState() {
+  if (unsubscribe) unsubscribe();
+  unsubscribe = onSnapshot(doc(db, "duel", "state"), snap => {
+    if (!snap.exists()) {
+      state = freshState();
+      writeDoc(DUEL_DOC, state);
+    } else {
+      state = snap.data();
+    }
+    renderAll();
+  });
+}
+
+// ─── Game state ───────────────────────────────────────────────────
+function freshState() {
+  return {
+    phase: "setup",
+    wordA: "", wordB: "",
+    pickedA: false, pickedB: false,
+    histA: [], histB: [],           // [{word, states:[…]}]
+    doneA: false, wonA: false,
+    doneB: false, wonB: false,
+  };
+}
+
+async function resetGame() {
+  inputA = ""; inputB = "";
+  const s = freshState();
+  await loadWordLists();
+  if (wordsA.length > 0 && wordsB.length > 0) s.phase = "pick"; // skip re-upload if lists exist
+  await writeDoc(DUEL_DOC, s);
+}
+window.resetGame = resetGame;
+
+// ─── Word lists ───────────────────────────────────────────────────
+async function loadWordLists() {
+  const d = await readDoc(WORDS_DOC);
+  if (d) { wordsA = d.A || []; wordsB = d.B || []; }
+}
+async function saveWordLists() {
+  await writeDoc(WORDS_DOC, { A: wordsA, B: wordsB });
+}
+
+function parseWords(text) {
+  return [...new Set(
+    text.split(/[\n,;]+/)
+        .map(w => w.trim().toUpperCase())
+        .filter(w => w.length >= 3 && /^[A-ZÄÖÜ]+$/.test(w))
+  )];
+}
+
+window.handleUpload = function(player, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const words = parseWords(ev.target.result);
+    if (player === "A") wordsA = words; else wordsB = words;
+    await saveWordLists();
+    showToast(`✅ ${words.length} Wörter für ${player === "A" ? "Dich" : "Lena"} geladen`);
+    renderSetup();
+  };
+  reader.readAsText(file);
+};
+
+// ─── Pick ──────────────────────────────────────────────────────────
+window.goToPick = async function() {
+  await writeDoc(DUEL_DOC, { ...state, phase: "pick" });
+};
+
+window.submitPick = async function(player) {
+  const input = document.getElementById(`pick-input-${player.toLowerCase()}`).value.trim().toUpperCase();
+  const msg   = document.getElementById(`pick-msg-${player.toLowerCase()}`);
+  if (!input || input.length < 3) { msg.textContent = "Mindestens 3 Buchstaben"; return; }
+  if (!/^[A-ZÄÖÜ]+$/.test(input)) { msg.textContent = "Nur Buchstaben erlaubt"; return; }
+  msg.textContent = "";
+  const update = { ...state };
+  if (player === "A") { update.wordA = input; update.pickedA = true; }
+  else                { update.wordB = input; update.pickedB = true; }
+  if (update.pickedA && update.pickedB) update.phase = "play";
+  await writeDoc(DUEL_DOC, update);
+};
+
+// ─── Wordle logic ─────────────────────────────────────────────────
+function evaluate(guess, target) {
+  const res = Array(guess.length).fill("absent");
+  const t = [...target], g = [...guess];
+  g.forEach((c,i) => { if (c===t[i]) { res[i]="correct"; t[i]=null; g[i]=null; } });
+  g.forEach((c,i) => { if (!c) return; const ti=t.indexOf(c); if (ti!==-1) { res[i]="present"; t[ti]=null; } });
+  return res;
+}
+
+function getKeyState(letter, hist) {
+  let best = "unused";
+  for (const row of hist) {
+    row.word.split("").forEach((c,i) => {
+      if (c !== letter) return;
+      const s = row.states[i];
+      if (s==="correct") best="correct";
+      else if (s==="present" && best!=="correct") best="present";
+      else if (s==="absent" && best==="unused") best="absent";
+    });
+  }
+  return best;
+}
+
+// ─── Guess submission ─────────────────────────────────────────────
+async function submitGuess(player) {
+  if (!state || state.phase !== "play") return;
+  const input  = player === "A" ? inputA : inputB;
+  const target = player === "A" ? state.wordB : state.wordA;
+  const wl     = target.length;
+  if (input.length !== wl) {
+    const gridEl = document.getElementById(`main-grid-${player.toLowerCase()}`);
+    const lastRow = gridEl.querySelector(`.grid-row:nth-child(${(player==="A"?state.histA:state.histB).length+1})`);
+    if (lastRow) { lastRow.classList.add("shake"); setTimeout(()=>lastRow.classList.remove("shake"),400); }
+    showToast(`${wl} Buchstaben nötig`);
+    return;
+  }
+  const states  = evaluate(input, target);
+  const newRow  = { word: input, states };
+  const won     = input === target;
+  const update  = { ...state,
+    histA: [...state.histA], histB: [...state.histB] };
+  if (player === "A") {
+    update.histA.push(newRow);
+    if (won || update.histA.length >= 6) { update.doneA=true; update.wonA=won; }
+  } else {
+    update.histB.push(newRow);
+    if (won || update.histB.length >= 6) { update.doneB=true; update.wonB=won; }
+  }
+  if (update.doneA && update.doneB) update.phase = "result";
+  if (player==="A") inputA=""; else inputB="";
+  await writeDoc(DUEL_DOC, update);
+}
+
+// ─── Physical keyboard ────────────────────────────────────────────
+document.addEventListener("keydown", e => {
+  if (!state || state.phase !== "play") return;
+  const player = activeKeyboard;
+  if (!player) return;
+  const done = player==="A" ? state.doneA : state.doneB;
+  if (done) return;
+  const key = e.key;
+  if (key === "Enter") { submitGuess(player); return; }
+  if (key === "Backspace") { if(player==="A") inputA=inputA.slice(0,-1); else inputB=inputB.slice(0,-1); renderPlay(); return; }
+  const upper = key.length===1 ? key.toUpperCase() : null;
+  if (!upper) return;
+  if (!/^[A-ZÄÖÜ]$/.test(upper)) return;
+  const target = player==="A" ? state.wordB : state.wordA;
+  const cur = player==="A" ? inputA : inputB;
+  if (cur.length < target.length) {
+    if (player==="A") inputA+=upper; else inputB+=upper;
+    renderPlay();
+  }
+});
+
+// ─── Render ───────────────────────────────────────────────────────
+function renderAll() {
+  if (!state) return;
+  document.getElementById("phase-label").textContent =
+    {setup:"SCHRITT 1 · WORTLISTEN", pick:"SCHRITT 2 · WÖRTER WÄHLEN",
+     play:"DUELL", result:"ERGEBNIS"}[state.phase] || "";
+
+  document.getElementById("setup-screen").style.display  = state.phase==="setup"  ? "block" : "none";
+  document.getElementById("pick-screen").style.display   = state.phase==="pick"   ? "block" : "none";
+  document.getElementById("play-screen").style.display   = state.phase==="play"   ? "flex"  : "none";
+  document.getElementById("result-screen").style.display = state.phase==="result" ? "flex"  : "none";
+
+  if (state.phase==="setup")  renderSetup();
+  if (state.phase==="pick")   renderPick();
+  if (state.phase==="play")   renderPlay();
+  if (state.phase==="result") renderResult();
+}
+
+// ── Setup ─────────────────────────────────────────────────────────
+function renderSetup() {
+  renderWordChips("chips-a", wordsA, "a");
+  renderWordChips("chips-b", wordsB, "b");
+  document.getElementById("count-a").textContent = wordsA.length ? `${wordsA.length} WÖRTER GELADEN` : "";
+  document.getElementById("count-b").textContent = wordsB.length ? `${wordsB.length} WÖRTER GELADEN` : "";
+  document.getElementById("lbl-a").className = "upload-label" + (wordsA.length ? " loaded-a" : "");
+  document.getElementById("lbl-b").className = "upload-label" + (wordsB.length ? " loaded-b" : "");
+  const lbl_a = document.getElementById("lbl-a");
+  const lbl_b = document.getElementById("lbl-b");
+  // Keep the input inside, update text node
+  const inp_a = lbl_a.querySelector("input");
+  const inp_b = lbl_b.querySelector("input");
+  lbl_a.childNodes[0].textContent = wordsA.length
+    ? `✅ ${wordsA.length} Wörter\nNeue Datei wählen` : "📂 Wortliste hochladen\n(.txt, ein Wort pro Zeile)";
+  lbl_b.childNodes[0].textContent = wordsB.length
+    ? `✅ ${wordsB.length} Wörter\nNeue Datei wählen` : "📂 Wortliste hochladen\n(.txt, ein Wort pro Zeile)";
+  document.getElementById("btn-to-pick").disabled = !(wordsA.length && wordsB.length);
+}
+
+function renderWordChips(containerId, words, cls) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = "";
+  words.slice(0,12).forEach(w => {
+    const span = document.createElement("span");
+    span.className = "word-chip";
+    span.style.color = cls==="a" ? "#4a9eff" : "#ff6b8a";
+    span.style.borderColor = cls==="a" ? "#1a3a6a" : "#6a1a2a";
+    span.textContent = w;
+    el.appendChild(span);
+  });
+  if (words.length > 12) {
+    const more = document.createElement("span");
+    more.style.color = "#333"; more.style.fontSize = "10px";
+    more.textContent = `+${words.length-12}`;
+    el.appendChild(more);
+  }
+}
+
+// ── Pick ──────────────────────────────────────────────────────────
+function renderPick() {
+  if (!state) return;
+  // Chips for A (picks from wordsA)
+  const ca = document.getElementById("pick-chips-a");
+  ca.innerHTML = "";
+  wordsA.slice(0,20).forEach(w => {
+    const b = document.createElement("button");
+    b.className = "word-chip"; b.style.color="#4a9eff"; b.style.borderColor="#1a3a6a";
+    b.textContent = w;
+    b.onclick = () => { document.getElementById("pick-input-a").value = w; };
+    ca.appendChild(b);
+  });
+  // Chips for B (picks from wordsB)
+  const cb = document.getElementById("pick-chips-b");
+  cb.innerHTML = "";
+  wordsB.slice(0,20).forEach(w => {
+    const b = document.createElement("button");
+    b.className = "word-chip"; b.style.color="#ff6b8a"; b.style.borderColor="#6a1a2a";
+    b.textContent = w;
+    b.onclick = () => { document.getElementById("pick-input-b").value = w; };
+    cb.appendChild(b);
+  });
+
+  // Done banners
+  if (state.pickedA) {
+    document.getElementById("pick-done-a").style.display = "block";
+    document.getElementById("pick-btn-a").style.display  = "none";
+  }
+  if (state.pickedB) {
+    document.getElementById("pick-done-b").style.display = "block";
+    document.getElementById("pick-btn-b").style.display  = "none";
+  }
+}
+
+// ── Play ──────────────────────────────────────────────────────────
+function renderPlay() {
+  if (!state || state.phase !== "play") return;
+
+  // Which side should physical keyboard control? Click to focus
+  document.getElementById("side-a").onclick = () => { activeKeyboard="A"; highlightActive(); };
+  document.getElementById("side-b").onclick = () => { activeKeyboard="B"; highlightActive(); };
+  if (!activeKeyboard) { activeKeyboard="A"; }
+
+  // Grids
+  renderMainGrid("main-grid-a", state.histA, inputA, state.wordB, "A");
+  renderMainGrid("main-grid-b", state.histB, inputB, state.wordA, "B");
+  renderMiniGrid("mini-grid-a", state.histA, state.wordB, "A");
+  renderMiniGrid("mini-grid-b", state.histB, state.wordA, "B");
+
+  // Keyboards
+  renderKeyboard("keyboard-a", state.histA, "A");
+  renderKeyboard("keyboard-b", state.histB, "B");
+
+  // Attempt counters
+  document.getElementById("attempts-a").textContent = `${state.histA.length}/6`;
+  document.getElementById("attempts-b").textContent = `${state.histB.length}/6`;
+
+  // Done banners
+  renderDoneBanner("done-banner-a", state.doneA, state.wonA, state.wordB, "A");
+  renderDoneBanner("done-banner-b", state.doneB, state.wonB, state.wordA, "B");
+
+  highlightActive();
+}
+
+function highlightActive() {
+  document.getElementById("side-a").style.outline = activeKeyboard==="A" ? "2px solid #4a9eff44" : "none";
+  document.getElementById("side-b").style.outline = activeKeyboard==="B" ? "2px solid #ff6b8a44" : "none";
+}
+
+function renderMainGrid(id, hist, input, target, player) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  const wl = target.length;
+  const done = player==="A" ? state.doneA : state.doneB;
+  for (let r=0; r<6; r++) {
+    const row = document.createElement("div");
+    row.className = "grid-row";
+    row.style.display = "flex"; row.style.gap = "5px";
+    const committed = r < hist.length;
+    const current   = r === hist.length && !done;
+    const rowWord   = committed ? hist[r].word : current ? input : "";
+    const rowStates = committed ? hist[r].states : null;
+    for (let c=0; c<wl; c++) {
+      const tile = document.createElement("div");
+      tile.className = "tile";
+      const letter = rowWord[c] || "";
+      tile.textContent = letter;
+      if (committed) tile.classList.add(rowStates[c]);
+      else if (letter) tile.classList.add(`filled-${player.toLowerCase()}`);
+      // Adjust size for long words
+      if (wl > 6) { tile.style.width=tile.style.height="36px"; tile.style.fontSize="14px"; }
+      row.appendChild(tile);
+    }
+    el.appendChild(row);
+  }
+}
+
+function renderMiniGrid(id, hist, target, player) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  const wl = target.length;
+  for (let r=0; r<6; r++) {
+    const row = document.createElement("div");
+    row.style.display="flex"; row.style.gap="3px"; row.style.marginBottom="3px";
+    const committed = r < hist.length;
+    const rowStates = committed ? hist[r].states : null;
+    for (let c=0; c<wl; c++) {
+      const tile = document.createElement("div");
+      tile.className = "tile mini";
+      if (committed) tile.classList.add(rowStates[c]);
+      row.appendChild(tile);
+    }
+    el.appendChild(row);
+  }
+}
+
+function renderDoneBanner(id, done, won, word, player) {
+  const el = document.getElementById(id);
+  if (!done) { el.style.display="none"; return; }
+  el.style.display="block";
+  el.style.background = won ? "#0d2a10" : "#2a0d0a";
+  el.style.border = won ? "1px solid #4ab855" : "1px solid #e05030";
+  el.style.color  = won ? "#4ab855" : "#e05030";
+  el.innerHTML = won
+    ? "✓ GELÖST!"
+    : `✗ NICHT GELÖST<br><span style="color:#555;font-size:10px">Wort: <span style="color:${player==="A"?"#4a9eff":"#ff6b8a"};font-family:monospace">${word}</span></span>`;
+}
+
+function renderKeyboard(id, hist, player) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  const done = player==="A" ? state.doneA : state.doneB;
+  if (done) return;
+  KB_ROWS.forEach(row => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "kb-row";
+    row.forEach(k => {
+      const btn = document.createElement("button");
+      btn.className = "key";
+      if (k==="ENTER") btn.classList.add("wide-enter");
+      else if (k==="⌫") btn.classList.add("wide-del");
+      btn.textContent = k;
+      if (!["ENTER","⌫"].includes(k)) {
+        const ks = getKeyState(k, hist);
+        if (ks!=="unused") btn.classList.add(`key-${ks}`);
+      }
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        activeKeyboard = player;
+        const target = player==="A" ? state.wordB : state.wordA;
+        const cur    = player==="A" ? inputA : inputB;
+        if (k==="ENTER") { submitGuess(player); }
+        else if (k==="⌫") { if(player==="A") inputA=inputA.slice(0,-1); else inputB=inputB.slice(0,-1); renderPlay(); }
+        else if (cur.length < target.length && /^[A-ZÄÖÜ]$/.test(k)) {
+          if(player==="A") inputA+=k; else inputB+=k; renderPlay();
+        }
+      });
+      rowEl.appendChild(btn);
+    });
+    el.appendChild(rowEl);
+  });
+}
+
+// ── Result ────────────────────────────────────────────────────────
+function renderResult() {
+  if (!state) return;
+  const attA = state.histA.length, attB = state.histB.length;
+  let winner = "";
+  if (state.wonA && !state.wonB) winner="A";
+  else if (state.wonB && !state.wonA) winner="B";
+  else if (state.wonA && state.wonB) winner = attA<=attB ? "A" : "B";
+
+  const winnerText = document.getElementById("winner-text");
+  if (winner==="A") winnerText.innerHTML=`<span style="color:#4a9eff">DU GEWINNST! 🏆</span>`;
+  else if (winner==="B") winnerText.innerHTML=`<span style="color:#ff6b8a">LENA GEWINNT! 🏆</span>`;
+  else winnerText.innerHTML=`<span style="color:#c89030">UNENTSCHIEDEN</span>`;
+
+  const cards = document.getElementById("result-cards");
+  cards.innerHTML = "";
+  [["A","#4a9eff","#1a3a6a","Du",state.wonA,attA,state.wordB],
+   ["B","#ff6b8a","#6a1a2a","Lena",state.wonB,attB,state.wordA]].forEach(([p,col,dim,name,won,att,word])=>{
+    const card = document.createElement("div");
+    card.className = "result-box";
+    card.style.border = `1px solid ${winner===p?col:dim}`;
+    card.style.background = "#0a0a0a";
+    card.style.boxShadow = winner===p ? `0 0 28px ${col}44` : "none";
+    card.innerHTML = `
+      ${winner===p?'<div style="font-size:24px;margin-bottom:6px">🏆</div>':""}
+      <div style="color:${col};font-size:12px;letter-spacing:4px;margin-bottom:10px">${name.toUpperCase()}</div>
+      <div style="color:#fff;font-size:32px;font-weight:700;font-family:monospace">${att}</div>
+      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:8px">VERSUCHE</div>
+      <div style="color:${won?"#4ab855":"#e05030"};font-size:12px;letter-spacing:2px">${won?"✓ GELÖST":"✗ NICHT GELÖST"}</div>
+      <div style="color:#444;font-size:11px;margin-top:8px">Wort war: <span style="color:${col};font-family:monospace">${word}</span></div>`;
+    cards.appendChild(card);
+  });
+}
+
+// ─── Toast ─────────────────────────────────────────────────────────
+function showToast(msg, d=2500) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.display="block";
+  setTimeout(()=>el.style.display="none", d);
+}
+
+// ─── Boot ──────────────────────────────────────────────────────────
+initFirebase();
+</script>
+</body>
+</html>
