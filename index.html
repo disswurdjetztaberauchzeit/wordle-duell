@@ -4,50 +4,56 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Wordle Duell</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:#080808;color:#ccc;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 10px}
+body{background:#080808;color:#ccc;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 10px 40px}
 .vs-title{font-size:26px;letter-spacing:10px;font-weight:700;background:linear-gradient(90deg,#4a9eff,#ff6b8a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
 .subtitle{color:#555;font-size:11px;letter-spacing:4px;margin-top:4px;text-align:center}
 .panel{background:#0a0a0a;border:1px solid #1a1a1a;border-radius:8px;padding:24px}
-button{font-family:'Courier New',monospace;cursor:pointer;letter-spacing:2px;transition:all 0.2s;border-radius:4px}
+button{font-family:'Courier New',monospace;cursor:pointer;letter-spacing:2px;transition:all 0.2s;border-radius:4px;border:none}
 .btn{background:transparent;border:1px solid #333;color:#888;font-size:11px;padding:9px 20px}
 .btn:hover{border-color:#555;color:#ccc}
-.btn-a{border-color:#1a3a6a;color:#4a9eff;background:#060d1a}
-.btn-b{border-color:#6a1a2a;color:#ff6b8a;background:#1a060d}
 .btn-go{background:linear-gradient(90deg,#1a3a6a,#6a1a2a);border:1px solid #555;color:#fff;padding:11px 36px;font-size:12px}
 .btn-go:disabled{opacity:0.3;cursor:not-allowed}
-.btn-danger{border-color:#6a1a1a;color:#ff4444;background:#1a0808;font-size:10px;padding:7px 16px}
-input[type=text],input[type=password],input[type=number]{background:#0a0a0a;border:1px solid #333;color:#fff;border-radius:4px;padding:10px 12px;font-family:'Courier New',monospace;font-size:15px;width:100%;outline:none;margin-bottom:10px}
-input[type=number]{letter-spacing:1px}
-.tile{width:50px;height:50px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:700;border-radius:4px;border:2px solid #1a1a1a;background:#0d0d0d;color:transparent;transition:background 0.25s,border-color 0.25s,color 0.1s;flex-shrink:0}
+.btn-danger{border:1px solid #6a1a1a;color:#ff4444;background:#1a0808;font-size:10px;padding:7px 16px;letter-spacing:1px}
+label{color:#555;font-size:10px;letter-spacing:2px;display:block;margin-bottom:5px;margin-top:12px}
+input[type=text],input[type=password],input[type=number]{background:#0a0a0a;border:1px solid #333;color:#fff;border-radius:4px;padding:10px 12px;font-family:'Courier New',monospace;font-size:15px;width:100%;outline:none;transition:border-color 0.2s}
+input:focus{border-color:#555}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.tile{width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;border-radius:4px;border:2px solid #1a1a1a;background:#0d0d0d;color:transparent;transition:background 0.3s,border-color 0.3s,color 0.15s;flex-shrink:0;position:relative}
 .tile.filled-a{border-color:#4a9eff;background:#0d1f3a;color:#4a9eff}
 .tile.filled-b{border-color:#ff6b8a;background:#3a0d1a;color:#ff6b8a}
 .tile.correct{background:#2d7a3a;border-color:#4ab855;color:#fff}
 .tile.present{background:#8a6010;border-color:#c89030;color:#fff}
 .tile.absent{background:#1a1a1a;border-color:#1a1a1a;color:#444}
-.tile.mini{width:20px;height:20px;font-size:8px;border-radius:2px}
 .grid{display:flex;flex-direction:column;gap:5px}
-.grid-row{display:flex;gap:5px}
-.keyboard{display:flex;flex-direction:column;gap:4px;margin-top:12px}
+.grid-row{display:flex;gap:5px;position:relative}
+.keyboard{display:flex;flex-direction:column;gap:4px;margin-top:14px}
 .kb-row{display:flex;gap:3px;justify-content:center}
-.key{background:#1e1e2e;color:#888;border:1px solid #333;border-radius:4px;font-weight:700;width:28px;height:36px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Courier New',monospace;transition:background 0.15s}
-.key.wide-enter{width:52px;font-size:8px}
-.key.wide-del{width:38px}
+.key{background:#1e1e2e;color:#888;border:1px solid #333;border-radius:4px;font-weight:700;width:30px;height:38px;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:'Courier New',monospace;transition:background 0.15s,color 0.15s}
+.key:active{transform:scale(0.93)}
+.key.wide-enter{width:54px;font-size:8px;letter-spacing:0.5px}
+.key.wide-del{width:40px}
 .key.key-correct{background:#2d7a3a;color:#fff;border-color:#4ab855}
 .key.key-present{background:#8a6010;color:#fff;border-color:#c89030}
 .key.key-absent{background:#111;color:#333;border-color:#111}
-#play-screen{display:flex;width:100%;max-width:920px}
-.side{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 8px;border-top:3px solid}
+#play-screen{display:flex;width:100%;max-width:960px;gap:0}
+.side{flex:1;display:flex;flex-direction:column;align-items:center;padding:16px 10px;border-top:3px solid}
 .side-a{background:#060d1a;border-color:#4a9eff}
 .side-b{background:#1a060d;border-color:#ff6b8a;border-left:1px solid #111}
-.toast{background:#111;border:1px solid #333;border-radius:4px;padding:7px 18px;font-size:12px;letter-spacing:1px;color:#ccc;margin-bottom:10px;text-align:center;animation:fadeDown 0.2s}
-.invalid-shake{animation:shake 0.4s}
+.toast{background:#111;border:1px solid #333;border-radius:4px;padding:8px 20px;font-size:12px;letter-spacing:1px;color:#ccc;margin-bottom:10px;text-align:center;animation:fadeDown 0.2s;max-width:500px;width:100%}
 @keyframes fadeDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.invalid-shake{animation:shake 0.4s}
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #151515;font-size:12px}
-.badge{padding:2px 8px;border-radius:3px;font-size:10px;letter-spacing:1px}
-#admin-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:100;align-items:center;justify-content:center}
+#admin-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:100;align-items:center;justify-content:center}
+.timer-bar{height:3px;background:#333;border-radius:2px;width:100%;margin-bottom:8px;overflow:hidden}
+.timer-fill{height:100%;border-radius:2px;transition:width 1s linear,background 1s linear}
+.row-timer{position:absolute;right:-36px;top:50%;transform:translateY(-50%);font-size:10px;letter-spacing:0;color:#555;width:30px;text-align:center}
+.waiting-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin:0 2px;animation:timerPulse 1.2s infinite}
 </style>
 </head>
 <body>
@@ -58,156 +64,142 @@ input[type=number]{letter-spacing:1px}
 </div>
 <div id="toast" class="toast" style="display:none"></div>
 
-<!-- ══ SCREEN: LOGIN ══════════════════════════════════════════════ -->
-<div id="login-screen" style="display:none;width:100%;max-width:440px">
+<!-- ══ LOGIN ══════════════════════════════════════════════════════ -->
+<div id="login-screen" style="display:none;width:100%;max-width:460px">
   <div class="panel" style="border-color:#222">
-    <div style="color:#666;font-size:10px;letter-spacing:3px;margin-bottom:20px;text-align:center">ANMELDEN</div>
+    <div style="color:#666;font-size:10px;letter-spacing:3px;margin-bottom:22px;text-align:center">ANMELDEN</div>
 
-    <div style="display:flex;gap:16px;margin-bottom:20px">
-      <button class="btn btn-a" id="login-btn-a" onclick="selectLoginRole('A')" style="flex:1;padding:14px;font-size:13px;letter-spacing:3px">DU</button>
-      <button class="btn btn-b" id="login-btn-b" onclick="selectLoginRole('B')" style="flex:1;padding:14px;font-size:13px;letter-spacing:3px">LENA</button>
-    </div>
+    <label>DEIN NAME</label>
+    <input type="text" id="login-name" placeholder="Name eingeben…" maxlength="20"
+      onkeydown="if(event.key==='Enter')doLogin()"/>
 
-    <div id="login-role-form" style="display:none">
-      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:6px">DEIN NAME</div>
-      <input type="text" id="login-name" placeholder="Name…" oninput="this.value=this.value.slice(0,20)"/>
-      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:6px;margin-top:4px">MAX. FEHLVERSUCHE (SPIELENDE)</div>
-      <input type="number" id="login-maxfail" value="6" min="1" max="20" style="letter-spacing:2px"/>
-      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:16px">
-        Nach dieser Anzahl falscher Versuche hast du verloren.
-      </div>
-      <button class="btn-go" style="width:100%" onclick="doLogin()">SPIELEN →</button>
+    <label>MAX. FEHLVERSUCHE <span style="color:#333">(es gilt die niedrigere Zahl beider Spieler)</span></label>
+    <input type="number" id="login-maxfail" value="6" min="1" max="20" style="margin-bottom:4px"/>
+
+    <label>TIMER PRO ZEILE <span style="color:#333">(Minuten, 0 = kein Timer)</span></label>
+    <input type="number" id="login-timer" value="0" min="0" max="30" style="margin-bottom:18px"/>
+
+    <button class="btn-go" style="width:100%" onclick="doLogin()">SPIELEN →</button>
+
+    <div id="login-waiting" style="display:none;color:#555;font-size:11px;letter-spacing:2px;text-align:center;margin-top:16px;padding:10px">
+      <span class="waiting-dot" style="background:#4a9eff"></span>
+      <span class="waiting-dot" style="background:#ff6b8a;animation-delay:0.4s"></span>
+      <span class="waiting-dot" style="background:#4a9eff;animation-delay:0.8s"></span>
+      <div style="margin-top:8px" id="login-wait-msg"></div>
     </div>
   </div>
-  <div style="text-align:center;margin-top:16px">
-    <button class="btn" onclick="showAdmin()">STATISTIK (ADMIN)</button>
+  <div style="text-align:center;margin-top:14px">
+    <button class="btn" onclick="showAdmin()">📊 STATISTIK (ADMIN)</button>
   </div>
 </div>
 
-<!-- ══ SCREEN: PICK ═══════════════════════════════════════════════ -->
-<div id="pick-screen" style="display:none;width:100%;max-width:700px">
+<!-- ══ PICK ═══════════════════════════════════════════════════════ -->
+<div id="pick-screen" style="display:none;width:100%;max-width:720px">
   <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
 
     <div class="panel" id="pick-panel-a" style="border-color:#1a3a6a;min-width:280px;flex:1">
-      <div style="color:#4a9eff;font-size:11px;letter-spacing:3px;margin-bottom:14px;font-weight:700">
-        DU WÄHLST FÜR LENA
-      </div>
-      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:6px">
-        Wörter komma-getrennt (alle 5 Buchstaben, im Duden):
-      </div>
+      <div id="pick-title-a" style="color:#4a9eff;font-size:11px;letter-spacing:3px;margin-bottom:14px;font-weight:700"></div>
+      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:6px">Wörter komma-getrennt (5 Buchstaben):</div>
       <input type="text" id="pick-input-a" placeholder="HUNDE, KATZE, VOGEL…"
         oninput="this.value=this.value.toUpperCase()"
         onkeydown="if(event.key==='Enter')submitPick('A')"/>
       <div id="pick-msg-a" style="color:#e05030;font-size:10px;min-height:14px;letter-spacing:1px;margin-bottom:8px"></div>
-      <div id="pick-done-a" style="display:none;color:#4ab855;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">
-        ✅ WÖRTER GESETZT
-      </div>
-      <button class="btn btn-a" id="pick-btn-a" style="width:100%" onclick="submitPick('A')">WÖRTER FESTLEGEN →</button>
+      <div id="pick-done-a" style="display:none;color:#4ab855;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT</div>
+      <button class="btn" id="pick-btn-a" style="border-color:#1a3a6a;color:#4a9eff;background:#060d1a;width:100%" onclick="submitPick('A')">FESTLEGEN →</button>
     </div>
 
     <div class="panel" id="pick-panel-b" style="border-color:#6a1a2a;min-width:280px;flex:1">
-      <div style="color:#ff6b8a;font-size:11px;letter-spacing:3px;margin-bottom:14px;font-weight:700">
-        LENA WÄHLT FÜR DICH
-      </div>
-      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:6px">
-        Wörter komma-getrennt (alle 5 Buchstaben, im Duden):
-      </div>
+      <div id="pick-title-b" style="color:#ff6b8a;font-size:11px;letter-spacing:3px;margin-bottom:14px;font-weight:700"></div>
+      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:6px">Wörter komma-getrennt (5 Buchstaben):</div>
       <input type="text" id="pick-input-b" placeholder="HUNDE, KATZE, VOGEL…"
         oninput="this.value=this.value.toUpperCase()"
         onkeydown="if(event.key==='Enter')submitPick('B')"/>
       <div id="pick-msg-b" style="color:#e05030;font-size:10px;min-height:14px;letter-spacing:1px;margin-bottom:8px"></div>
-      <div id="pick-done-b" style="display:none;color:#ff6b8a;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">
-        ✅ WÖRTER GESETZT
-      </div>
-      <button class="btn btn-b" id="pick-btn-b" style="width:100%" onclick="submitPick('B')">WÖRTER FESTLEGEN →</button>
+      <div id="pick-done-b" style="display:none;color:#ff6b8a;font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT</div>
+      <button class="btn" id="pick-btn-b" style="border-color:#6a1a2a;color:#ff6b8a;background:#1a060d;width:100%" onclick="submitPick('B')">FESTLEGEN →</button>
     </div>
 
   </div>
-  <div style="text-align:center;margin-top:20px">
+  <div style="text-align:center;margin-top:18px">
     <button class="btn btn-danger" onclick="forfeit()">✗ ABBRECHEN / AUFGEBEN</button>
   </div>
 </div>
 
-<!-- ══ SCREEN: PLAY ═══════════════════════════════════════════════ -->
+<!-- ══ PLAY ═══════════════════════════════════════════════════════ -->
 <div id="play-screen" style="display:none">
+
   <div class="side side-a" id="side-a" onclick="setActive('A')">
-    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span id="name-a" style="color:#4a9eff;font-size:12px;font-weight:700;letter-spacing:3px"></span>
+    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span id="name-display-a" style="color:#4a9eff;font-size:13px;font-weight:700;letter-spacing:3px"></span>
       <span id="attempts-a" style="color:#333;font-size:11px"></span>
     </div>
-    <div style="margin-bottom:8px;opacity:0.6">
-      <div style="color:#333;font-size:9px;letter-spacing:2px;margin-bottom:3px;text-align:center">LENA RÄT…</div>
-      <div id="mini-grid-b" class="grid"></div>
-    </div>
-    <div style="width:100%;height:1px;background:#0f1a2a;margin-bottom:8px"></div>
-    <div id="done-banner-a" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:8px;text-align:center;font-size:11px;letter-spacing:2px"></div>
-    <div id="main-grid-a" class="grid"></div>
+    <div class="timer-bar" id="tbar-a" style="display:none"><div class="timer-fill" id="tfill-a" style="width:100%;background:#4a9eff"></div></div>
+    <div id="done-banner-a" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:10px;text-align:center;font-size:11px;letter-spacing:2px"></div>
+    <div id="main-grid-a" class="grid" style="position:relative"></div>
     <div id="keyboard-a" class="keyboard"></div>
-    <div style="margin-top:12px">
-      <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
-    </div>
+    <div style="margin-top:14px"><button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button></div>
   </div>
 
   <div class="side side-b" id="side-b" onclick="setActive('B')">
-    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <span id="name-b" style="color:#ff6b8a;font-size:12px;font-weight:700;letter-spacing:3px"></span>
+    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span id="name-display-b" style="color:#ff6b8a;font-size:13px;font-weight:700;letter-spacing:3px"></span>
       <span id="attempts-b" style="color:#333;font-size:11px"></span>
     </div>
-    <div style="margin-bottom:8px;opacity:0.6">
-      <div style="color:#333;font-size:9px;letter-spacing:2px;margin-bottom:3px;text-align:center">DU RÄT…</div>
-      <div id="mini-grid-a" class="grid"></div>
-    </div>
-    <div style="width:100%;height:1px;background:#2a0f1a;margin-bottom:8px"></div>
-    <div id="done-banner-b" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:8px;text-align:center;font-size:11px;letter-spacing:2px"></div>
-    <div id="main-grid-b" class="grid"></div>
+    <div class="timer-bar" id="tbar-b" style="display:none"><div class="timer-fill" id="tfill-b" style="width:100%;background:#ff6b8a"></div></div>
+    <div id="done-banner-b" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:10px;text-align:center;font-size:11px;letter-spacing:2px"></div>
+    <div id="main-grid-b" class="grid" style="position:relative"></div>
     <div id="keyboard-b" class="keyboard"></div>
-    <div style="margin-top:12px">
-      <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
-    </div>
+    <div style="margin-top:14px"><button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button></div>
   </div>
+
 </div>
 
-<!-- ══ SCREEN: RESULT ════════════════════════════════════════════ -->
+<!-- ══ RESULT ════════════════════════════════════════════════════ -->
 <div id="result-screen" style="display:none;flex-direction:column;align-items:center">
   <div id="winner-text" style="font-size:18px;letter-spacing:6px;font-weight:700;margin-bottom:20px;text-align:center"></div>
   <div id="result-cards" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:24px"></div>
   <button class="btn-go" onclick="newGame()">NEUE RUNDE →</button>
 </div>
 
-<!-- ══ ADMIN PANEL ════════════════════════════════════════════════ -->
+<!-- ══ ADMIN ══════════════════════════════════════════════════════ -->
 <div id="admin-panel">
-  <div class="panel" style="border-color:#333;min-width:320px;max-width:520px;width:90%;max-height:85vh;overflow-y:auto">
+  <div class="panel" style="border-color:#333;min-width:320px;max-width:540px;width:92%;max-height:88vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <div style="color:#888;font-size:12px;letter-spacing:4px">STATISTIK</div>
-      <button class="btn" onclick="closeAdmin()">✕ SCHLIESSEN</button>
+      <button class="btn" onclick="closeAdmin()">✕</button>
     </div>
-
-    <div id="admin-login" style="display:none">
-      <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:8px">
+    <div id="admin-login">
+      <div style="color:#444;font-size:10px;letter-spacing:1px;margin-bottom:10px;line-height:1.7">
         Merksatz: „Ich mag Worte, die man nicht aussprechen kann." – Karl Valentin
       </div>
       <input type="password" id="admin-pw-input" placeholder="Passwort…"
         onkeydown="if(event.key==='Enter')checkAdminPw()"/>
-      <button class="btn" style="width:100%" onclick="checkAdminPw()">ENTSPERREN</button>
+      <button class="btn" style="width:100%;margin-top:4px" onclick="checkAdminPw()">ENTSPERREN</button>
       <div id="admin-pw-msg" style="color:#e05030;font-size:10px;margin-top:8px;min-height:14px"></div>
     </div>
-
     <div id="admin-content" style="display:none">
       <div id="stats-list"></div>
-      <div style="margin-top:20px;padding-top:16px;border-top:1px solid #1a1a1a;display:flex;gap:10px">
-        <button class="btn btn-danger" style="flex:1" onclick="clearStats()">STATISTIK LÖSCHEN</button>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #1a1a1a;display:flex;gap:10px">
+        <button class="btn btn-danger" style="flex:1" onclick="clearStats()">LÖSCHEN</button>
         <button class="btn" style="flex:1" onclick="closeAdmin()">SCHLIESSEN</button>
       </div>
     </div>
   </div>
 </div>
 
+<!-- ══ QR CODE ════════════════════════════════════════════════════ -->
+<div style="margin-top:48px;text-align:center;opacity:0.5">
+  <div style="font-size:9px;letter-spacing:3px;color:#444;margin-bottom:12px">MITSPIELEN</div>
+  <div id="qrcode" style="display:inline-block;background:#fff;padding:10px;border-radius:6px"></div>
+  <div style="font-size:9px;letter-spacing:1px;color:#333;margin-top:8px" id="qr-url"></div>
+</div>
+
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, arrayUnion }
+import { getFirestore, doc, setDoc, onSnapshot, getDoc }
                            from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ── Firebase config ───────────────────────────────────────────────
+// ── Firebase ──────────────────────────────────────────────────────
 const app = initializeApp({
   apiKey:            "AIzaSyCCMItvN8RNbnWi_V6KdBmhYwFxl53R9R0",
   authDomain:        "wordle-duell.firebaseapp.com",
@@ -219,22 +211,8 @@ const app = initializeApp({
 const db = getFirestore(app);
 
 // ── Admin password ────────────────────────────────────────────────
-// Merksatz: „Ich mag Worte, die man nicht aussprechen kann." – Karl Valentin
+// „Ich mag Worte, die man nicht aussprechen kann." – Karl Valentin
 const ADMIN_PW = "Wrglpfrmpft";
-
-// ── German 5-letter word list (curated ~3500 words) ───────────────
-const WORDS = new Set(`ABART ABEND ABGAS ABWEG ACHSE ADLER ADLIG AHNEN AKTIE ALARM ALBUM ALGEN ALLEE ALPEN ALTAR ALTES AMSEL ANGEL ANGST ANKER APFEL ARCHE ARMUT ASCHE ASSEL ATMEN ATOLL AUFZUG AUGEN AUGEN BAGEL BANDE BANGE BARKE BARON BARTH BASIS BAUCH BAUEN BAUER BAUMS BEERE BEIGE BEIZE BELAG BELLA BERGE BIRKE BLATT BLECH BLICK BLITZ BLOCK BODEN BOGEN BOHNE BOLZE BOMBE BOTOX BRAND BRAUE BRAUN BRAUT BREIT BREMS BRUCH BRUNN BUCHE BUCHT BULLE BUNDE BURGE DACHS DANCE DATEI DATUM DAUNE DECKE DEPOT DEICH DELTA DENKE DIELE DOLCH DOLDE DOMAR DRANG DRECK DRIFT DRUCK DUELL DUENE DURST EBENE EBERT ECHOS EDIKT EINÖD EISEN ELCHE ELEND ELTER EMBER EMDEN ENGEL ENKEL ENZYM ERBEN ERNTE ERSTE ESCHE ESSEN EWIGE FABEL FALKE FALTE FARNE FASER FAUST FEIGE FEIND FELDE FELGE FERNE FERSE FESTE FEUER FIALE FILET FINNE FISCH FJORD FLAIR FLAMM FLECK FLINT FLORA FLOSS FLUCH FLUGE FLUSS FOHRE FOLGE FORMA FORTE FORST FRAGE FRANC FREAK FREGE FRIST FROHE FROST FRUCHT FUCHS FUNDE FUNKE GABEL GANSE GASSE GATTE GAUGE GEHÖR GEIER GEIST GELEE GEMSE GEPÄCK GESTE GETUE GIFTE GILET GIPFE GLANZ GLEIS GLIED GLÜCK GOLDE GORGE GÖTZE GRABS GRALS GRAMM GRAUE GREIS GRIFF GROBN GRUBE GRUSS GULDE GUNST GUSTO HABER HACKE HAFEN HAFER HAGEL HALTE HAMME HANGE HARFE HARKE HARZE HECHT HEGEL HEIDE HEIME HEISS HEIST HELFE HEMDE HERTZ HERZE HEXEN HIEBE HIRSE HOBEL HOLEN HOLME HOLZE HORST HOSEA HUMME HUNDE HUNTE HUPFE HUREN IDEEN IGELN IMKER IMMER INSEL IRREN JOBBE JOKER JOULE JUCHE JURIS JURTE KABEL KADER KAFFE KAFER KAJAK KAMIN KANAL KAPOK KAPPE KATZE KEHLE KEILE KELLE KLANG KLAPS KLARE KLEID KLIMM KLOTZ KLUFT KNALL KNAPP KNAST KNAUF KNICK KNOCK KNOPF KOMET KORBE KORKS KOTTE KRAFT KRAME KRANZ KREUZ KRIEG KRISE KRUME KRUPP KUCHE KÜHLE KUNDE KURVE LADEN LAGER LAMPE LANDE LANGE LARVE LATTE LAUBE LAUGE LAUNE LAWNE LEHRE LEIER LEIME LEISE LENDE LESEN LICHT LIEBE LIEGE LINIE LINKE LINSE LIPPE LISTE LOCKE LOGIK LOHNE LORRE LUCKE LUMPE LUNGE MALVE MANIE MARKE MARKT MARME MAUKE MÄUSE MEERE MEILE MEISE MELON MENGE MERGE MESSE METZE MIETE MILCH MILDE MILZE MINZE MIRUS MISTE MITTE MODER MOHRE MONDE MONTE MORDE MORGE MORSE MOSAI MOSER MOTIV MOTTE MUHLE MUND MURKS MUSSE NABEL NACHT NADEL NÄHTE NAPHT NARBE NATUR NEGER NENNE NENZE NERVE NETTO NEUEM NICHT NIETE NIXIE NOCKE NORME NORTH NOTIZ NÜSSE OCHSE OFFEN OHEIM OLDIE OSTER PACHT PAGEL PALME PANNE PASTE PAUSE PEDAL PFADE PFERD PFIFF PFOTE PICKE PINNE PLAGE PLANE PLANK PLATZ PLUND POLKA POSSE PREIS PRIMA PROBE PRUNK PULTE PUMPE PUNKT PUPPE PURGE PURZE QUARZ QUEUE QUIRL RACHE RADER RANKE RASEN RASTE RATTE RAUCH RAUPE RAUTE RECHE REDEN REIBE REIDE REIFE REIFE REISE REIZE RENKE RESTE RIFFE RINDE RINGE RIPPE RIPSE RIESE RODEL ROSEN RUDER RUFFE RUGEL RUSSE SACKE SAFTE SAHNE SALBE SALZE SAMEN SANDE SÄNGE SARGE SAUCE SAUGE SÄURE SCHAF SCHAH SCHAM SCHAU SCHER SCHEU SCHIF SCHIO SCHOR SCHOS SCHUH SCHUR SEDAN SEELE SENSE SERUM SIEGE SILBE SIRRE SKALA SKIZZ SOCKE SOFAS SOHLE SONAR SORGE SPALT SPEER SPELL SPIEL SPORT SPOTT SPREE SPRIT SPULE SPUND STAAT STAHL STAUB STECK STEIG STERN STEUE STIEF STILE STOFF STOLZ STORM STOSS STRAF STROH STROM STRUK STUBE STÜCK STUFE STUNK SUCHE SUMPF TAFEL TANGO TANTE TAPIR TAUBE TAUFE TAUPE TAXIS TEICH TENNE THEMA TIMOR TINTE TISCH TOBAK TONNE TORTE TOUCH TRACE TRAUM TREND TRINK TRITT TROTZ TRUHE TRUPP TULPE TURBO TURME TUSCH UBAHN ÜBUNG UMWEG UNGUT UNION UNRAT UNTAG URAHN URALT URBAN UROMA USANZ VAPOR VATER VEDAS VERSE VIECH VOGEL VOLTA VOLTE WABEN WACHS WACHT WÄNDE WANGE WARZE WATTE WEIDE WEILE WEISE WEITE WELPE WENIG WESEN WICHT WINDE WOCHE WOGEN WÖLFE WOLKE WOLLE WONNE WORTE WUNDE WÜRDE WÜRZE ZANGE ZECHE ZEILE ZEUGE ZIEGE ZIRPE ZITZE ZOMBI ZOPFE ZÜGEL ZUNGE ZWANG ZWECK ZWERG AALEN ABEND ABGAS ABWEG ACHSE ADLER ADLIG AHNEN AKTIE ALARM ALBUM ALGEN ALLEE ALPEN ALTAR AMSEL ANGEL ANGST ANKER APFEL ARCHE ARMUT ASCHE ATMEN ADEPT AFFEN AGAVE AGNET AHNEN AHORN AINOS AIRAN AITEN ALAND ALANT ALBAT ALCOR ALDIN ALFEN ALFKE ALGAR ALGOL ALISA ALTAY AMAZE AMBER AMBOS AMENT AMIGA AMINS AMÖBE AMPEL AMSEL ANCKE ANCON ANISE ANKUR ANNEX ANOMA ANTES ANTIK ANTUN ANWEH ANZUG APART APSIS ARCHE AREAL ARENA ARGEN ARGES ARGON ARGOT ARGUN ARIEL ARIES ARION ARRAK ARRAU ARSEN ARSIN ASKET ASPIK ASTRO ATLAS ATOLL ATOUT ATRIP ATTEN AUDIT AUFLUG AUREL AURUM AVERS AVISO AXIAL AXION BABEL BADGE BAFÖG BAGNO BAHRE BAKEN BALAS BALDI BALIA BALIE BALLE BALLI BALSA BANAL BANDE BARBE BARDO BARGE BARKA BARME BARTH BASIS BASSA BASTE BASUN BASUR BATIK BATLE BAUCH BAUEM BAUER BAUIN BAZIL BEERE BEGUM BEIGE BEIZE BELAG BELLA BERGE BETON BEULE BIRKE BISON BISSE BITTE BIWAK BLANK BLÄSE BLÄUE BLECH BLICK BLITZ BLOCK BLUFF BODEN BOGUM BOLZE BOMBE BORKE BRAME BRAUN BRECHUNG BREMS BREVE BRIOL BRISE BRIST BRUCH BRUNN BRUSC BUCHE BUCHT BUFFO BUFFE BUKEL BUKLE BULGE BULLE BUMME BUNDE BURGE BÜSTE DACHT DACHS DANCE DARIN DATEI DATUM DAUNE DECKE DEPOT DEICH DELTA DIELE DOLCH DOLDE DRANG DRECK DRIFT DRUCK DUELL DÜNEN DURST EBENE ECHSE EDIKT EICHE EIFER EIMER EINÖD EISEN EKLAT ELCHE ELEND ELTER EMBER EMDEN ENGEL ENKEL ENZYM ERBEN ERNTE ERSTE ESCHE ESSEN EWIGE EXTRA FABEL FAHNE FALKE FALTE FARNE FASER FAUST FEIGE FEIND FELDE FELGE FERNE FERSE FESTE FEUER FINNE FISCH FJORD FLAIR FLAMM FLECK FLINT FLORA FLOSS FLUCH FLUGEL FLUSS FOLIO FORST FRAGE FRANC FRIST FROHE FROST FRUCHT FUCHS FUNDE FUNKE GABEL GANSE GASSE GATTE GEHÖR GEIER GEIST GELEE GEMSE GESTE GIFTE GIPFE GLANZ GLEIS GLIED GLÜCK GORGE GÖTZE GRABS GRAMM GRAUE GREIS GRIFF GRUBE GRUSS GULDE GUNST GUSTO HABER HACKE HAFEN HAFER HAGEL HALTE HAMME HANGE HARFE HARKE HARZE HECHT HEIDE HEIME HEISS HELFE HEMDE HEXEN HIEBE HIRSE HOBEL HOLME HOLZE HORST HUMME HUNDE HUNTE IGELN IMKER INSEL IRREN JOKER JOULE JUCHE JURTE KABEL KADER KAFFE KAFER KAJAK KAMIN KANAL KAPOK KAPPE KATZE KEHLE KEILE KELLE KLANG KLAPS KLARE KLEID KLIMM KLOTZ KLUFT KNALL KNAPP KNAST KNAUF KNICK KNOCK KNOPF KOMET KORBE KORKS KRAFT KRAME KRANZ KREUZ KRIEG KRISE KRUME KUCHE KÜHLE KUNDE KURVE LADEN LAGER LAMPE LANDE LANGE LARVE LATTE LAUBE LAUGE LAUNE LEHRE LEIER LEIME LEISE LENDE LICHT LIEBE LIEGE LINIE LINKE LINSE LIPPE LISTE LOCKE LOGIK LOHNE LUCKE LUMPE LUNGE MALVE MANIE MARKE MARKT MAUKE MÄUSE MEERE MEILE MEISE MENGE MERGE MESSE MILCH MILDE MILZE MINZE MISTE MITTE MODER MOHRE MONDE MORDE MORSE MOTIV MOTTE MUHLE MURKS NABEL NACHT NADEL NÄHTE NARBE NATUR NENNE NERVE NETTO NICHT NIETE NOCKE NORME NOTIZ NÜSSE OCHSE OFFEN OHEIM PACHT PALME PANNE PASTE PAUSE PEDAL PFADE PFERD PFIFF PFOTE PICKE PINNE PLAGE PLANE PLANK PLATZ POLKA PREIS PRIMA PROBE PRUNK PULTE PUMPE PUNKT PUPPE QUARZ QUIRL RACHE RADER RANKE RASEN RASTE RATTE RAUCH RAUPE RAUTE RECHE REDEN REIBE REIFE REISE REIZE RENKE RESTE RIFFE RINDE RINGE RIPPE RIESE RODEL ROSEN RUDER RUSSE SACKE SAFTE SAHNE SALBE SALZE SAMEN SANDE SÄNGE SARGE SAUCE SAUGE SÄURE SCHAF SCHAH SCHAM SCHAU SEELE SENSE SERUM SIEGE SILBE SKALA SOCKE SOHLE SONAR SORGE SPALT SPEER SPIEL SPORT SPOTT SPRIT SPULE STAAT STAHL STAUB STERN STOFF STOLZ STOSS STRAF STROH STROM STUBE STÜCK STUFE SUCHE SUMPF TAFEL TANGO TANTE TAPIR TAUBE TAUFE TAXIS TEICH TENNE THEMA TINTE TISCH TOBAK TONNE TORTE TRAUM TREND TRITT TROTZ TRUHE TRUPP TULPE TURME TUSCH ÜBUNG UMWEG UNION UNRAT URBAN VATER VERSE VIECH VOGEL VOLTA VOLTE WABEN WACHS WACHT WÄNDE WANGE WARZE WATTE WEIDE WEILE WEISE WEITE WELPE WESEN WICHT WINDE WOCHE WOGEN WÖLFE WOLKE WOLLE WONNE WORTE WUNDE WÜRDE WÜRZE ZANGE ZECHE ZEILE ZEUGE ZIEGE ZIRPE ZOMBI ZOPFE ZÜGEL ZUNGE ZWANG ZWECK ZWERG ABZUG ACHTE ADELN AFFEN AGAVE AHNEN AHORN ALGEN ALLEE ALPEN ALTAR AMSEL ANGEL ANGST ANKER APFEL ARCHE ARMUT ASCHE ATMEN ADEPT ABGAS`.split(/\s+/).filter(w => w.length === 5));
-
-// ── Game state ────────────────────────────────────────────────────
-let state    = null;
-let myRole   = null;  // "A" | "B"
-let myName   = "";
-let maxFail  = 6;
-let inputA   = "";
-let inputB   = "";
-let activeKB = "A";
-let unsub    = null;
-let adminOpen = false;
 
 const KB_ROWS = [
   ["Q","W","E","R","T","Z","U","I","O","P","Ü"],
@@ -242,93 +220,117 @@ const KB_ROWS = [
   ["ENTER","Y","X","C","V","B","N","M","⌫"],
 ];
 
+// ── State ─────────────────────────────────────────────────────────
+let state    = null;
+let myRole   = null;   // "A" | "B" — assigned at login
+let inputA   = "";
+let inputB   = "";
+let activeKB = "A";
+let adminOpen = false;
+let unsub    = null;
+// Timer
+let timerInterval = null;
+let rowStartTime  = null;
+
 function fresh() {
   return {
-    phase: "login",
-    nameA: "", nameB: "", maxFailA: 6, maxFailB: 6,
-    wordListA: [], wordListB: [],   // words B must guess / words A must guess
-    wordIdxA: 0, wordIdxB: 0,      // current word index
-    pickedA: false, pickedB: false,
-    histA: [], histB: [],
-    doneA: false, wonA: false,
-    doneB: false, wonB: false,
-    forfeitBy: "",
+    phase:    "login",           // login | pick | play | result
+    nameA:"", nameB:"",
+    maxFailA: 6, maxFailB: 6,
+    timerMin: 0,                 // minutes per row (0 = off)
+    wordListA:[], wordListB:[],  // A's list goes to B, B's list goes to A
+    wordIdxA:0,  wordIdxB:0,
+    pickedA:false, pickedB:false,
+    histA:[], histB:[],
+    doneA:false, wonA:false,
+    doneB:false, wonB:false,
+    forfeitBy:"",
+    rowStartA: null, rowStartB: null,
   };
 }
 
-// ── Firestore ────────────────────────────────────────────────────
-async function fsRead(path)      { const [c,i]=path.split("/"); const s=await getDoc(doc(db,c,i)); return s.exists()?s.data():null; }
-async function fsWrite(path, d)  { const [c,i]=path.split("/"); await setDoc(doc(db,c,i), d); }
+// ── Firestore helpers ─────────────────────────────────────────────
+async function fsRead(path)     { const [c,i]=path.split("/"); const s=await getDoc(doc(db,c,i)); return s.exists()?s.data():null; }
+async function fsWrite(path, d) { const [c,i]=path.split("/"); await setDoc(doc(db,c,i),d); }
 
 function subscribe() {
   if (unsub) unsub();
   unsub = onSnapshot(doc(db,"duel","state"), snap => {
+    const prev = state;
     state = snap.exists() ? snap.data() : fresh();
     if (!snap.exists()) fsWrite("duel/state", state);
+    // Detect row change for timer reset
+    if (myRole && prev && state.phase==="play") {
+      const prevLen = myRole==="A" ? prev.histA?.length : prev.histB?.length;
+      const curLen  = myRole==="A" ? state.histA?.length : state.histB?.length;
+      if (curLen !== prevLen) rowStartTime = Date.now();
+    }
     renderAll();
   });
 }
 
-// ── Validate word ────────────────────────────────────────────────
-function validWord(w) {
-  return w.length === 5 && WORDS.has(w);
-}
-
-// ── Login ────────────────────────────────────────────────────────
-window.selectLoginRole = function(role) {
-  myRole = role;
-  document.getElementById("login-btn-a").style.opacity = role==="A" ? "1" : "0.4";
-  document.getElementById("login-btn-b").style.opacity = role==="B" ? "1" : "0.4";
-  document.getElementById("login-role-form").style.display = "block";
-  document.getElementById("login-name").value = role==="A" ? (state&&state.nameA||"") : (state&&state.nameB||"");
-  document.getElementById("login-maxfail").value = role==="A" ? (state&&state.maxFailA||6) : (state&&state.maxFailB||6);
-  document.getElementById("login-name").focus();
-};
-
+// ── Login ─────────────────────────────────────────────────────────
 window.doLogin = async function() {
   const name = document.getElementById("login-name").value.trim();
-  const mf   = parseInt(document.getElementById("login-maxfail").value) || 6;
+  const mf   = parseInt(document.getElementById("login-maxfail").value)||6;
+  const tm   = parseFloat(document.getElementById("login-timer").value)||0;
   if (!name) { showToast("Bitte Namen eingeben"); return; }
-  myName  = name;
-  maxFail = mf;
-  const upd = { ...(state||fresh()) };
-  if (myRole==="A") { upd.nameA=name; upd.maxFailA=mf; }
-  else              { upd.nameB=name; upd.maxFailB=mf; }
-  // Advance to pick if both logged in
-  if ((myRole==="A"&&upd.nameB)||(myRole==="B"&&upd.nameA)) upd.phase="pick";
-  await fsWrite("duel/state", upd);
+
+  const cur = state || fresh();
+
+  // Determine role: first in gets A, second gets B
+  if (!cur.nameA) {
+    myRole = "A";
+    const upd = { ...cur, nameA:name, maxFailA:mf, timerMin:tm };
+    await fsWrite("duel/state", upd);
+    document.getElementById("login-waiting").style.display = "block";
+    document.getElementById("login-wait-msg").textContent  = `Warte auf Mitspieler…`;
+  } else if (!cur.nameB) {
+    myRole = "B";
+    const timerMin = Math.min(cur.timerMin||0, tm) || Math.max(cur.timerMin||0, tm); // use whichever non-zero, or average
+    const maxFail  = Math.min(cur.maxFailA, mf);
+    const upd = {
+      ...cur, nameB:name, maxFailA:maxFail, maxFailB:maxFail,
+      timerMin: (cur.timerMin>0||tm>0) ? Math.min(cur.timerMin||999, tm||999) : 0,
+      phase:"pick"
+    };
+    await fsWrite("duel/state", upd);
+  } else {
+    // Reconnect: figure out who we are by name
+    if (cur.nameA === name) myRole = "A";
+    else if (cur.nameB === name) myRole = "B";
+    else { showToast("Spiel läuft bereits mit anderen Spielern"); return; }
+  }
 };
 
-// ── Pick ─────────────────────────────────────────────────────────
+// ── Pick ──────────────────────────────────────────────────────────
 window.submitPick = async function(player) {
-  const raw = document.getElementById(`pick-input-${player.toLowerCase()}`).value;
-  const words = raw.split(",").map(w=>w.trim().toUpperCase()).filter(w=>w);
-  const msg = document.getElementById(`pick-msg-${player.toLowerCase()}`);
-  if (!words.length) { msg.textContent="Bitte mindestens ein Wort eingeben"; return; }
-  const invalid = words.filter(w => !validWord(w));
-  if (invalid.length) {
-    msg.textContent = `Nicht gültig (5 Buchstaben, im Duden): ${invalid.join(", ")}`;
-    return;
-  }
-  msg.textContent = "";
+  const raw   = document.getElementById(`pick-input-${player.toLowerCase()}`).value;
+  const words = raw.split(",").map(w=>w.trim().toUpperCase().replace(/[^A-ZÄÖÜ]/g,"")).filter(w=>w.length===5);
+  const msg   = document.getElementById(`pick-msg-${player.toLowerCase()}`);
+  const all   = raw.split(",").map(w=>w.trim().toUpperCase().replace(/[^A-ZÄÖÜ]/g,"")).filter(w=>w);
+  const wrong = all.filter(w=>w.length!==5);
+  if (!words.length) { msg.textContent="Mindestens ein 5-Buchstaben-Wort eingeben"; return; }
+  if (wrong.length)  { msg.textContent=`Nicht 5 Buchstaben: ${wrong.join(", ")}`; return; }
+  msg.textContent="";
   const upd = { ...state };
   if (player==="A") { upd.wordListA=words; upd.pickedA=true; }
   else              { upd.wordListB=words; upd.pickedB=true; }
   if (upd.pickedA && upd.pickedB) {
-    upd.phase="play";
-    upd.histA=[]; upd.histB=[];
-    upd.doneA=false; upd.wonA=false;
-    upd.doneB=false; upd.wonB=false;
-    upd.wordIdxA=0; upd.wordIdxB=0;
-    upd.forfeitBy="";
+    Object.assign(upd, {
+      phase:"play", histA:[], histB:[],
+      doneA:false, wonA:false, doneB:false, wonB:false,
+      wordIdxA:0, wordIdxB:0, forfeitBy:"",
+      rowStartA: Date.now(), rowStartB: Date.now(),
+    });
   }
   await fsWrite("duel/state", upd);
 };
 
-// ── Forfeit ──────────────────────────────────────────────────────
+// ── Forfeit ───────────────────────────────────────────────────────
 window.forfeit = async function() {
-  if (!confirm(`Wirklich aufgeben? ${myName||myRole} verliert diese Runde.`)) return;
-  const upd = { ...state, forfeitBy: myRole||"?", phase:"result", doneA:true, doneB:true };
+  if (!confirm(`Wirklich aufgeben?`)) return;
+  const upd = { ...state, forfeitBy:myRole||"?", phase:"result", doneA:true, doneB:true };
   if (myRole==="A") { upd.wonA=false; upd.wonB=true; }
   else              { upd.wonB=false; upd.wonA=true; }
   await fsWrite("duel/state", upd);
@@ -351,83 +353,96 @@ function keyState(letter, hist) {
 // ── Submit guess ──────────────────────────────────────────────────
 async function submitGuess(player) {
   if (!state||state.phase!=="play") return;
+  const done = player==="A" ? state.doneA : state.doneB;
+  if (done) return;
   const inp    = player==="A" ? inputA : inputB;
   const wlist  = player==="A" ? state.wordListB : state.wordListA;
   const widx   = player==="A" ? state.wordIdxA  : state.wordIdxB;
   const target = wlist[widx % wlist.length];
-  const maxF   = player==="A" ? state.maxFailA  : state.maxFailB;
+  const maxF   = state.maxFailA || 6;  // same for both
 
-  if (inp.length !== 5) {
-    shakeCurrent(player); showToast("5 Buchstaben nötig"); return;
-  }
-  if (!validWord(inp)) {
-    shakeCurrent(player); showToast("Wort nicht im Duden"); return;
-  }
+  if (inp.length!==5) { shakeCurrent(player); showToast("5 Buchstaben nötig"); return; }
 
   const states = evaluate(inp, target);
   const won    = inp === target;
   const upd    = { ...state, histA:[...state.histA], histB:[...state.histB] };
+  const now    = Date.now();
 
   if (player==="A") {
-    upd.histA.push({ word:inp, states });
-    if (inp.length && (won || upd.histA.length >= maxF)) {
-      if (won && upd.wordIdxA + 1 < upd.wordListB.length) {
-        // more words to go
-        upd.wordIdxA++;
-        upd.histA = [];
-      } else {
-        upd.doneA = true; upd.wonA = won;
-      }
-    }
-    inputA = "";
+    upd.histA.push({word:inp, states});
+    upd.rowStartA = now;
+    if (won && upd.wordIdxA+1 < wlist.length) { upd.wordIdxA++; upd.histA=[]; }
+    else if (won || upd.histA.length >= maxF)  { upd.doneA=true; upd.wonA=won; }
+    inputA="";
   } else {
-    upd.histB.push({ word:inp, states });
-    if (won || upd.histB.length >= maxF) {
-      if (won && upd.wordIdxB + 1 < upd.wordListA.length) {
-        upd.wordIdxB++;
-        upd.histB = [];
-      } else {
-        upd.doneB = true; upd.wonB = won;
-      }
-    }
-    inputB = "";
+    upd.histB.push({word:inp, states});
+    upd.rowStartB = now;
+    if (won && upd.wordIdxB+1 < wlist.length) { upd.wordIdxB++; upd.histB=[]; }
+    else if (won || upd.histB.length >= maxF)  { upd.doneB=true; upd.wonB=won; }
+    inputB="";
   }
 
-  if (upd.doneA && upd.doneB) {
-    upd.phase = "result";
-    await fsWrite("duel/state", upd);
-    await saveResult(upd);
-  } else {
-    await fsWrite("duel/state", upd);
-  }
+  if (upd.doneA && upd.doneB) { upd.phase="result"; await fsWrite("duel/state", upd); await saveResult(upd); }
+  else await fsWrite("duel/state", upd);
 }
 
 function shakeCurrent(player) {
-  const el = document.getElementById(`main-grid-${player.toLowerCase()}`);
-  const hist = player==="A" ? state.histA : state.histB;
-  const row = el?.querySelectorAll(".grid-row")[hist.length];
+  const el  = document.getElementById(`main-grid-${player.toLowerCase()}`);
+  const len = player==="A" ? state.histA.length : state.histB.length;
+  const row = el?.querySelectorAll(".grid-row")[len];
   if (row) { row.classList.add("invalid-shake"); setTimeout(()=>row.classList.remove("invalid-shake"),400); }
 }
 
-// ── Save result to stats ──────────────────────────────────────────
-async function saveResult(s) {
-  const attA = s.histA?.length||0, attB = s.histB?.length||0;
-  let winner = "";
-  if (s.forfeitBy) winner = s.forfeitBy==="A" ? (s.nameB||"B") : (s.nameA||"A");
-  else if (s.wonA&&!s.wonB) winner=s.nameA||"A";
-  else if (s.wonB&&!s.wonA) winner=s.nameB||"B";
-  else if (s.wonA&&s.wonB)  winner=attA<=attB?(s.nameA||"A"):(s.nameB||"B");
+// ── Timer ─────────────────────────────────────────────────────────
+function startTimerLoop() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!state||state.phase!=="play"||!state.timerMin) return;
+    const totalMs = state.timerMin * 60000;
+    ["A","B"].forEach(p => {
+      const done = p==="A" ? state.doneA : state.doneB;
+      if (done) return;
+      const startTs = p==="A" ? state.rowStartA : state.rowStartB;
+      if (!startTs) return;
+      const elapsed = Date.now() - startTs;
+      const pct = Math.max(0, 100 - (elapsed/totalMs*100));
+      const fill = document.getElementById(`tfill-${p.toLowerCase()}`);
+      const bar  = document.getElementById(`tbar-${p.toLowerCase()}`);
+      if (fill) { fill.style.width=pct+"%"; fill.style.background=pct>50?"#4ab855":pct>20?"#c89030":"#e05030"; }
+      if (bar)  bar.style.display = state.timerMin>0 ? "block":"none";
+      // Time's up → auto-submit empty (forfeit row)
+      if (elapsed >= totalMs && myRole===p) {
+        // Force move: submit current input even if incomplete (treated as forfeit of row)
+        const inp = p==="A" ? inputA : inputB;
+        if (inp.length===5) submitGuess(p);
+        else {
+          // fill with X and force
+          if (p==="A") inputA = (inp+"XXXXX").slice(0,5);
+          else         inputB = (inp+"XXXXX").slice(0,5);
+          submitGuess(p);
+        }
+      }
+    });
+  }, 500);
+}
 
-  const entry = {
-    date: new Date().toLocaleDateString("de-DE"),
-    time: new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),
-    playerA: s.nameA||"A", playerB: s.nameB||"B",
-    attemptsA: attA, attemptsB: attB,
-    wonA: !!s.wonA, wonB: !!s.wonB,
-    forfeit: s.forfeitBy||"",
-    winner,
+// ── Save stats ────────────────────────────────────────────────────
+async function saveResult(s) {
+  const attA=s.histA?.length||0, attB=s.histB?.length||0;
+  let winner="";
+  if(s.forfeitBy) winner=s.forfeitBy==="A"?(s.nameB||"B"):(s.nameA||"A");
+  else if(s.wonA&&!s.wonB) winner=s.nameA;
+  else if(s.wonB&&!s.wonA) winner=s.nameB;
+  else if(s.wonA&&s.wonB)  winner=attA<=attB?s.nameA:s.nameB;
+  const entry={
+    date:new Date().toLocaleDateString("de-DE"),
+    time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),
+    playerA:s.nameA||"A", playerB:s.nameB||"B",
+    attemptsA:attA, attemptsB:attB,
+    wonA:!!s.wonA, wonB:!!s.wonB,
+    forfeit:s.forfeitBy||"", winner,
   };
-  const cur = await fsRead("duel/stats") || { games:[] };
+  const cur = await fsRead("duel/stats") || {games:[]};
   cur.games = [...(cur.games||[]), entry];
   await fsWrite("duel/stats", cur);
 }
@@ -436,106 +451,97 @@ async function saveResult(s) {
 window.newGame = async function() {
   inputA=""; inputB="";
   const s = fresh();
-  s.nameA = state.nameA||""; s.nameB = state.nameB||"";
-  s.maxFailA = state.maxFailA||6; s.maxFailB = state.maxFailB||6;
-  s.phase = (s.nameA && s.nameB) ? "pick" : "login";
+  // Keep names so players don't need to re-login, but go back to pick
+  s.nameA=state.nameA||""; s.nameB=state.nameB||"";
+  s.maxFailA=state.maxFailA||6; s.maxFailB=state.maxFailB||6;
+  s.timerMin=state.timerMin||0;
+  s.phase = (s.nameA&&s.nameB) ? "pick" : "login";
   await fsWrite("duel/state", s);
 };
 
-// ── Physical keyboard ─────────────────────────────────────────────
+// ── Keyboard ──────────────────────────────────────────────────────
 document.addEventListener("keydown", e => {
   if (adminOpen||!state||state.phase!=="play") return;
   const p = activeKB;
-  const done = p==="A"?state.doneA:state.doneB;
-  if (done) return;
-  if (e.key==="Enter") { submitGuess(p); return; }
+  if ((p==="A"?state.doneA:state.doneB)) return;
+  if (e.key==="Enter")     { submitGuess(p); return; }
   if (e.key==="Backspace") {
     if(p==="A") inputA=inputA.slice(0,-1); else inputB=inputB.slice(0,-1);
     renderPlay(); return;
   }
-  const k = e.key.toUpperCase();
+  const k=e.key.toUpperCase();
   if (/^[A-ZÄÖÜ]$/.test(k)) {
-    const cur = p==="A"?inputA:inputB;
-    if (cur.length<5) { if(p==="A")inputA+=k; else inputB+=k; renderPlay(); }
+    const cur=p==="A"?inputA:inputB;
+    if(cur.length<5){ if(p==="A")inputA+=k; else inputB+=k; renderPlay(); }
   }
 });
-
 window.setActive = function(p) { activeKB=p; highlightActive(); };
 function highlightActive() {
-  document.getElementById("side-a").style.outline = activeKB==="A"?"2px solid #4a9eff33":"none";
-  document.getElementById("side-b").style.outline = activeKB==="B"?"2px solid #ff6b8a33":"none";
+  document.getElementById("side-a").style.outline=activeKB==="A"?"2px solid #4a9eff33":"none";
+  document.getElementById("side-b").style.outline=activeKB==="B"?"2px solid #ff6b8a33":"none";
 }
 
 // ── Render ────────────────────────────────────────────────────────
 function renderAll() {
   if (!state) return;
-  document.getElementById("phase-label").textContent =
-    {login:"ANMELDEN",pick:"WÖRTER WÄHLEN",play:"DUELL",result:"ERGEBNIS"}[state.phase]||"";
-
-  S("login-screen",  state.phase==="login"  ? "block":"none");
-  S("pick-screen",   state.phase==="pick"   ? "block":"none");
-  S("play-screen",   state.phase==="play"   ? "flex" :"none");
-  S("result-screen", state.phase==="result" ? "flex" :"none");
-
-  if (state.phase==="login")  renderLogin();
-  if (state.phase==="pick")   renderPick();
-  if (state.phase==="play")   renderPlay();
-  if (state.phase==="result") renderResult();
+  const labels={login:"ANMELDEN",pick:"WÖRTER WÄHLEN",play:"DUELL",result:"ERGEBNIS"};
+  document.getElementById("phase-label").textContent=labels[state.phase]||"";
+  S("login-screen",  state.phase==="login"  ?"block":"none");
+  S("pick-screen",   state.phase==="pick"   ?"block":"none");
+  S("play-screen",   state.phase==="play"   ?"flex" :"none");
+  S("result-screen", state.phase==="result" ?"flex" :"none");
+  if(state.phase==="login")  renderLogin();
+  if(state.phase==="pick")   renderPick();
+  if(state.phase==="play")  { renderPlay(); startTimerLoop(); }
+  if(state.phase==="result") renderResult();
 }
 
 function renderLogin() {
-  // Show waiting message if one player already logged in
-  const form = document.getElementById("login-role-form");
-  if (!myRole) {
-    if (state.nameA && !state.nameB) showToast(`${state.nameA} wartet – wähle deine Seite!`);
-    if (state.nameB && !state.nameA) showToast(`${state.nameB} wartet – wähle deine Seite!`);
+  const waiting=document.getElementById("login-waiting");
+  if (state.nameA && !state.nameB) {
+    waiting.style.display="block";
+    document.getElementById("login-wait-msg").textContent=`${state.nameA} wartet auf Mitspieler…`;
   }
 }
 
 function renderPick() {
-  if (state.pickedA) {
-    S("pick-done-a","block"); S("pick-btn-a","none");
-  }
-  if (state.pickedB) {
-    S("pick-done-b","block"); S("pick-btn-b","none");
-  }
+  const nA=state.nameA||"Spieler A", nB=state.nameB||"Spieler B";
+  document.getElementById("pick-title-a").textContent=`${nA.toUpperCase()} WÄHLT FÜR ${nB.toUpperCase()}`;
+  document.getElementById("pick-title-b").textContent=`${nB.toUpperCase()} WÄHLT FÜR ${nA.toUpperCase()}`;
+  if(state.pickedA){S("pick-done-a","block");S("pick-btn-a","none");}
+  if(state.pickedB){S("pick-done-b","block");S("pick-btn-b","none");}
 }
 
 function renderPlay() {
-  if (!state||state.phase!=="play") return;
-  // Names
-  document.getElementById("name-a").textContent = state.nameA||"DU";
-  document.getElementById("name-b").textContent = state.nameB||"LENA";
-
-  const wlistA = state.wordListB||[], wlistB = state.wordListA||[];
-  const tA = wlistA[state.wordIdxA%wlistA.length]||"?????";
-  const tB = wlistB[state.wordIdxB%wlistB.length]||"?????";
-  const maxA = state.maxFailA||6, maxB = state.maxFailB||6;
-
-  document.getElementById("attempts-a").textContent = `${state.histA.length}/${maxA}`;
-  document.getElementById("attempts-b").textContent = `${state.histB.length}/${maxB}`;
-
-  renderMainGrid("main-grid-a", state.histA, inputA, tA, "A");
-  renderMainGrid("main-grid-b", state.histB, inputB, tB, "B");
-  renderMiniGrid("mini-grid-a", state.histA, "A");
-  renderMiniGrid("mini-grid-b", state.histB, "B");
-  renderKeyboard("keyboard-a", state.histA, "A");
-  renderKeyboard("keyboard-b", state.histB, "B");
-  renderDoneBanner("done-banner-a", state.doneA, state.wonA, tA, "A");
-  renderDoneBanner("done-banner-b", state.doneB, state.wonB, tB, "B");
-
-  // Progress for multiple words
-  if (wlistA.length>1) document.getElementById("attempts-a").textContent += ` · Wort ${(state.wordIdxA||0)+1}/${wlistA.length}`;
-  if (wlistB.length>1) document.getElementById("attempts-b").textContent += ` · Wort ${(state.wordIdxB||0)+1}/${wlistB.length}`;
-
+  if(!state||state.phase!=="play") return;
+  const nA=state.nameA||"A", nB=state.nameB||"B";
+  document.getElementById("name-display-a").textContent=nA.toUpperCase();
+  document.getElementById("name-display-b").textContent=nB.toUpperCase();
+  const maxF=state.maxFailA||6;
+  const wlA=state.wordListB||[], wlB=state.wordListA||[];
+  const tA=wlA[(state.wordIdxA||0)%wlA.length]||"?????";
+  const tB=wlB[(state.wordIdxB||0)%wlB.length]||"?????";
+  let attTxtA=`${state.histA.length}/${maxF}`;
+  let attTxtB=`${state.histB.length}/${maxF}`;
+  if(wlA.length>1) attTxtA+=` · Wort ${(state.wordIdxA||0)+1}/${wlA.length}`;
+  if(wlB.length>1) attTxtB+=` · Wort ${(state.wordIdxB||0)+1}/${wlB.length}`;
+  document.getElementById("attempts-a").textContent=attTxtA;
+  document.getElementById("attempts-b").textContent=attTxtB;
+  renderMainGrid("main-grid-a",state.histA,inputA,tA,"A",maxF);
+  renderMainGrid("main-grid-b",state.histB,inputB,tB,"B",maxF);
+  renderDoneBanner("done-banner-a",state.doneA,state.wonA,tA,"A");
+  renderDoneBanner("done-banner-b",state.doneB,state.wonB,tB,"B");
+  renderKeyboard("keyboard-a",state.histA,"A");
+  renderKeyboard("keyboard-b",state.histB,"B");
+  document.getElementById("tbar-a").style.display=state.timerMin>0?"block":"none";
+  document.getElementById("tbar-b").style.display=state.timerMin>0?"block":"none";
   highlightActive();
 }
 
-function renderMainGrid(id, hist, inp, target, player) {
+function renderMainGrid(id,hist,inp,target,player,maxF) {
   const el=document.getElementById(id); el.innerHTML="";
-  const maxF = player==="A"?(state.maxFailA||6):(state.maxFailB||6);
-  const rows = Math.max(maxF, hist.length+1);
-  const done = player==="A"?state.doneA:state.doneB;
+  const done=player==="A"?state.doneA:state.doneB;
+  const rows=Math.max(maxF,hist.length+(done?0:1));
   for(let r=0;r<rows;r++){
     const row=document.createElement("div"); row.className="grid-row";
     const committed=r<hist.length, current=r===hist.length&&!done;
@@ -544,29 +550,15 @@ function renderMainGrid(id, hist, inp, target, player) {
     for(let c=0;c<5;c++){
       const t=document.createElement("div"); t.className="tile";
       const l=word[c]||""; t.textContent=l;
-      if(committed)t.classList.add(states[c]);
-      else if(l)t.classList.add(`filled-${player.toLowerCase()}`);
+      if(committed) t.classList.add(states[c]);
+      else if(l)    t.classList.add(`filled-${player.toLowerCase()}`);
       row.appendChild(t);
     }
     el.appendChild(row);
   }
 }
 
-function renderMiniGrid(id, hist, player) {
-  const el=document.getElementById(id); el.innerHTML="";
-  for(let r=0;r<6;r++){
-    const row=document.createElement("div"); row.style.cssText="display:flex;gap:3px;margin-bottom:3px";
-    const committed=r<hist.length;
-    for(let c=0;c<5;c++){
-      const t=document.createElement("div"); t.className="tile mini";
-      if(committed)t.classList.add(hist[r].states[c]);
-      row.appendChild(t);
-    }
-    el.appendChild(row);
-  }
-}
-
-function renderDoneBanner(id, done, won, word, player) {
+function renderDoneBanner(id,done,won,word,player) {
   const el=document.getElementById(id);
   if(!done){el.style.display="none";return;}
   el.style.display="block";
@@ -576,9 +568,9 @@ function renderDoneBanner(id, done, won, word, player) {
   el.innerHTML=won?"✓ GELÖST!":`✗ NICHT GELÖST<br><span style="color:#555;font-size:10px">Wort: <span style="color:${player==="A"?"#4a9eff":"#ff6b8a"};font-family:monospace">${word}</span></span>`;
 }
 
-function renderKeyboard(id, hist, player) {
+function renderKeyboard(id,hist,player) {
   const el=document.getElementById(id); el.innerHTML="";
-  const done=player==="A"?state.doneA:state.doneB; if(done)return;
+  if(player==="A"?state.doneA:state.doneB) return;
   KB_ROWS.forEach(row=>{
     const rowEl=document.createElement("div"); rowEl.className="kb-row";
     row.forEach(k=>{
@@ -590,7 +582,7 @@ function renderKeyboard(id, hist, player) {
       btn.addEventListener("click",e=>{
         e.stopPropagation(); activeKB=player;
         const cur=player==="A"?inputA:inputB;
-        if(k==="ENTER"){submitGuess(player);}
+        if(k==="ENTER") submitGuess(player);
         else if(k==="⌫"){if(player==="A")inputA=inputA.slice(0,-1);else inputB=inputB.slice(0,-1);renderPlay();}
         else if(cur.length<5&&/^[A-ZÄÖÜ]$/.test(k)){if(player==="A")inputA+=k;else inputB+=k;renderPlay();}
       });
@@ -604,92 +596,73 @@ function renderResult() {
   const s=state;
   const attA=s.histA?.length||0, attB=s.histB?.length||0;
   let winner="";
-  if(s.forfeitBy) winner=s.forfeitBy==="A"?(s.nameB||"B"):(s.nameA||"A");
-  else if(s.wonA&&!s.wonB)winner=s.nameA||"A";
-  else if(s.wonB&&!s.wonA)winner=s.nameB||"B";
-  else if(s.wonA&&s.wonB)winner=attA<=attB?(s.nameA||"A"):(s.nameB||"B");
-
+  if(s.forfeitBy) winner=s.forfeitBy==="A"?s.nameB:s.nameA;
+  else if(s.wonA&&!s.wonB) winner=s.nameA;
+  else if(s.wonB&&!s.wonA) winner=s.nameB;
+  else if(s.wonA&&s.wonB)  winner=attA<=attB?s.nameA:s.nameB;
   const wt=document.getElementById("winner-text");
-  const col=winner===(s.nameA||"A")?"#4a9eff":"#ff6b8a";
-  wt.innerHTML=winner?`<span style="color:${col}">${winner.toUpperCase()} GEWINNT! 🏆</span>`
+  const isA=winner===s.nameA;
+  wt.innerHTML=winner
+    ?`<span style="color:${isA?"#4a9eff":"#ff6b8a"}">${winner.toUpperCase()} GEWINNT! 🏆</span>`
     :`<span style="color:#c89030">UNENTSCHIEDEN</span>`;
-  if(s.forfeitBy)wt.innerHTML+=`<div style="color:#555;font-size:11px;letter-spacing:2px;margin-top:8px">Aufgegeben</div>`;
+  if(s.forfeitBy) wt.innerHTML+=`<div style="color:#555;font-size:11px;letter-spacing:2px;margin-top:8px">durch Aufgabe</div>`;
 
   const cards=document.getElementById("result-cards"); cards.innerHTML="";
   [[s.nameA||"A","#4a9eff","#1a3a6a",s.wonA,attA,s.wordListB?.[s.wordIdxA]||"?????"],
    [s.nameB||"B","#ff6b8a","#6a1a2a",s.wonB,attB,s.wordListA?.[s.wordIdxB]||"?????"]].forEach(([name,col,dim,won,att,word])=>{
     const isW=winner===name;
-    const card=document.createElement("div");
-    card.style.cssText=`background:#0a0a0a;border:1px solid ${isW?col:dim};border-radius:8px;padding:22px 28px;text-align:center;min-width:170px;${isW?`box-shadow:0 0 26px ${col}44`:""}`;
-    card.innerHTML=`${isW?'<div style="font-size:22px;margin-bottom:6px">🏆</div>':""}
+    const d=document.createElement("div");
+    d.style.cssText=`background:#0a0a0a;border:1px solid ${isW?col:dim};border-radius:8px;padding:22px 28px;text-align:center;min-width:165px;${isW?`box-shadow:0 0 26px ${col}44`:""}`;
+    d.innerHTML=`${isW?'<div style="font-size:22px;margin-bottom:6px">🏆</div>':""}
       <div style="color:${col};font-size:11px;letter-spacing:4px;margin-bottom:10px">${name.toUpperCase()}</div>
       <div style="color:#fff;font-size:30px;font-weight:700;font-family:monospace">${att}</div>
       <div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:8px">VERSUCHE</div>
       <div style="color:${won?"#4ab855":"#e05030"};font-size:11px;letter-spacing:2px">${won?"✓ GELÖST":"✗ NICHT GELÖST"}</div>
       <div style="color:#444;font-size:10px;margin-top:8px">Wort: <span style="color:${col};font-family:monospace">${word}</span></div>`;
-    cards.appendChild(card);
+    cards.appendChild(d);
   });
 }
 
 // ── Admin ─────────────────────────────────────────────────────────
-window.showAdmin = function() {
-  adminOpen=true;
-  const panel=document.getElementById("admin-panel");
-  panel.style.display="flex";
-  document.getElementById("admin-login").style.display="block";
-  document.getElementById("admin-content").style.display="none";
-  document.getElementById("admin-pw-msg").textContent="";
-  document.getElementById("admin-pw-input").value="";
-};
-window.closeAdmin = function() {
-  adminOpen=false;
-  document.getElementById("admin-panel").style.display="none";
-};
-window.checkAdminPw = async function() {
-  const pw=document.getElementById("admin-pw-input").value;
-  if(pw===ADMIN_PW){
+window.showAdmin  = function(){adminOpen=true;document.getElementById("admin-panel").style.display="flex";document.getElementById("admin-login").style.display="block";document.getElementById("admin-content").style.display="none";document.getElementById("admin-pw-msg").textContent="";document.getElementById("admin-pw-input").value="";};
+window.closeAdmin = function(){adminOpen=false;document.getElementById("admin-panel").style.display="none";};
+window.checkAdminPw = async function(){
+  if(document.getElementById("admin-pw-input").value===ADMIN_PW){
     document.getElementById("admin-login").style.display="none";
     document.getElementById("admin-content").style.display="block";
     await loadStats();
-  } else {
-    document.getElementById("admin-pw-msg").textContent="Falsches Passwort";
-  }
+  } else { document.getElementById("admin-pw-msg").textContent="Falsches Passwort"; }
 };
-async function loadStats() {
-  const data = await fsRead("duel/stats");
-  const games = data?.games||[];
-  const list = document.getElementById("stats-list");
+async function loadStats(){
+  const data=await fsRead("duel/stats"); const games=data?.games||[];
+  const list=document.getElementById("stats-list");
   if(!games.length){list.innerHTML='<div style="color:#444;font-size:12px;text-align:center;padding:16px">Noch keine Spiele</div>';return;}
-  list.innerHTML=`<div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:12px">${games.length} SPIELE GESPEICHERT</div>`
-    +[...games].reverse().map(g=>`
-      <div class="stat-row">
-        <div>
-          <div style="color:#ccc;font-size:12px">${g.date} ${g.time}</div>
-          <div style="color:#555;font-size:10px;letter-spacing:1px;margin-top:2px">${g.playerA} vs ${g.playerB}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="color:${g.winner===(g.playerA)?"#4a9eff":"#ff6b8a"};font-size:12px;font-weight:700">${g.winner||"—"}</div>
-          <div style="color:#444;font-size:10px">${g.attemptsA} vs ${g.attemptsB} Versuche</div>
-          ${g.forfeit?'<span class="badge" style="background:#2a0808;color:#ff4444">Aufgabe</span>':""}
-        </div>
-      </div>`).join("");
+  list.innerHTML=`<div style="color:#555;font-size:10px;letter-spacing:2px;margin-bottom:10px">${games.length} SPIELE</div>`
+    +[...games].reverse().map(g=>`<div class="stat-row">
+      <div><div style="color:#ccc;font-size:12px">${g.date} ${g.time}</div>
+      <div style="color:#555;font-size:10px;margin-top:2px">${g.playerA} vs ${g.playerB}</div></div>
+      <div style="text-align:right">
+        <div style="color:${g.winner===g.playerA?"#4a9eff":"#ff6b8a"};font-size:12px;font-weight:700">${g.winner||"—"}</div>
+        <div style="color:#444;font-size:10px">${g.attemptsA} : ${g.attemptsB} Versuche</div>
+        ${g.forfeit?'<div style="color:#e05030;font-size:9px;margin-top:2px">Aufgabe</div>':""}
+      </div></div>`).join("");
 }
-window.clearStats = async function() {
-  if(!confirm("Alle Statistiken wirklich löschen?")) return;
-  await fsWrite("duel/stats",{games:[]});
-  await loadStats();
-};
+window.clearStats = async function(){if(!confirm("Wirklich löschen?"))return;await fsWrite("duel/stats",{games:[]});await loadStats();};
 
 // ── Helpers ───────────────────────────────────────────────────────
-function S(id, v) { const el=document.getElementById(id); if(el) el.style.display=v; }
-function showToast(m,d=2500) {
-  const el=document.getElementById("toast");
-  el.textContent=m; el.style.display="block";
-  clearTimeout(el._t); el._t=setTimeout(()=>el.style.display="none",d);
+function S(id,v){const el=document.getElementById(id);if(el)el.style.display=v;}
+function showToast(m,d=2500){const el=document.getElementById("toast");el.textContent=m;el.style.display="block";clearTimeout(el._t);el._t=setTimeout(()=>el.style.display="none",d);}
+
+// ── QR Code ───────────────────────────────────────────────────────
+function buildQR(){
+  const url=window.location.href.split("?")[0].split("#")[0];
+  document.getElementById("qr-url").textContent=url;
+  try{new QRCode(document.getElementById("qrcode"),{text:url,width:120,height:120,colorDark:"#111",colorLight:"#fff"});}catch(e){}
 }
 
 // ── Boot ──────────────────────────────────────────────────────────
 subscribe();
+buildQR();
 </script>
 </body>
 </html>
