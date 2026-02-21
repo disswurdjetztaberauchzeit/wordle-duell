@@ -86,7 +86,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 .key.ka{background:#0a0a0a;color:#444;border-color:#1a1a1a}
 
 /* play screen */
-#play-screen{display:flex;width:100%;max-width:1020px;gap:2px}
+#s-play{display:flex;width:100%;max-width:1020px;gap:2px}
 .side{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 10px;border-top:3px solid;min-width:0}
 .side-a{background:#060e1c;border-color:var(--blue)}
 .side-b{background:#1c060e;border-color:var(--pink);border-left:1px solid #111}
@@ -106,8 +106,11 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
 .shake{animation:shake 0.4s}
+/* On mobile: hide the OTHER side entirely — each player only sees their own */
 @media(max-width:660px){
-  #play-screen{flex-direction:column}
+  #s-play{flex-direction:column}
+  /* Hide side-b on mobile for player A (class added via JS), and vice versa */
+  .hide-on-mobile{display:none!important}
   .side-b{border-left:none;border-top:2px solid var(--pink)}
   .tile{width:46px;height:46px;font-size:19px}
   .tile.mini{width:22px;height:22px;font-size:9px}
@@ -190,37 +193,50 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
   </div>
 </div>
 
-<!-- ══ PICK ═══════════════════════════════════════════════════════ -->
-<div id="s-pick" style="display:none;width:100%;max-width:760px">
-  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
-    <div class="panel" style="border-color:var(--blue-border);min-width:280px;flex:1">
-      <div id="pick-ta" style="color:var(--blue);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
-      <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
-      <input type="text" id="pick-a" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
-        oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('A')"/>
-      <div id="pick-ma" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
-      <div id="pick-da" style="display:none;color:var(--green);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
-      <button class="btn" id="pick-ba" style="border-color:var(--blue-border);color:var(--blue);background:var(--blue-dim);width:100%" onclick="submitPick('A')">FESTLEGEN →</button>
-    </div>
-    <div class="panel" style="border-color:var(--pink-border);min-width:280px;flex:1">
-      <div id="pick-tb" style="color:var(--pink);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
-      <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
-      <input type="text" id="pick-b" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
-        oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('B')"/>
-      <div id="pick-mb" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
-      <div id="pick-db" style="display:none;color:var(--pink);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
-      <button class="btn" id="pick-bb" style="border-color:var(--pink-border);color:var(--pink);background:var(--pink-dim);width:100%" onclick="submitPick('B')">FESTLEGEN →</button>
+
+<!-- ══ LOCKED ══════════════════════════════════════════════════════ -->
+<div id="s-locked" style="display:none;width:100%;max-width:440px">
+  <div class="panel" style="border-color:#444;text-align:center">
+    <div style="font-size:28px;margin-bottom:12px">🔒</div>
+    <div style="color:var(--text);font-size:13px;letter-spacing:2px;font-weight:700;margin-bottom:8px">SPIEL LÄUFT</div>
+    <div id="locked-info" style="color:var(--text3);font-size:11px;line-height:1.8;margin-bottom:24px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:18px">
+      <div style="color:var(--text3);font-size:10px;letter-spacing:2px;margin-bottom:10px">ADMIN · SPIEL ZURÜCKSETZEN</div>
+      <div style="color:var(--text3);font-size:9px;margin-bottom:10px">»Ich mag Worte, die man nicht aussprechen kann.« – Karl Valentin</div>
+      <input type="password" id="locked-pw" placeholder="Admin-Passwort..." onkeydown="if(event.key==='Enter')adminReset()"/>
+      <div id="locked-err" style="color:var(--red);font-size:10px;min-height:14px;margin-top:4px;margin-bottom:10px"></div>
+      <button class="btn btn-danger" style="width:100%;padding:11px;font-size:12px;letter-spacing:2px" onclick="adminReset()">
+        ↺ SPIEL ZURÜCKSETZEN
+      </button>
     </div>
   </div>
-  <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+</div>
+
+<!-- ══ PICK ═══════════════════════════════════════════════════════ -->
+<div id="s-pick" style="display:none;width:100%;max-width:480px">
+  <!-- My panel (shown based on myRole) -->
+  <div id="pick-mine" class="panel" style="margin-bottom:14px">
+    <div id="pick-title-mine" style="font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
+    <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter für den Gegner, komma-getrennt, je 5 Buchstaben (Ä Ö Ü ß erlaubt):</div>
+    <input type="text" id="pick-input-mine" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
+      oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitMyPick()"/>
+    <div id="pick-err-mine" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
+    <div id="pick-done-mine" style="display:none;color:var(--green);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
+    <button class="btn" id="pick-btn-mine" style="width:100%" onclick="submitMyPick()">FESTLEGEN →</button>
+  </div>
+  <!-- Opponent status -->
+  <div id="pick-opp-status" style="color:var(--text3);font-size:11px;text-align:center;padding:10px">
+    <span id="pick-opp-text"></span>
+  </div>
+  <div style="text-align:center;margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
     <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
     <button class="btn" onclick="hardReset(false)">↺ NEUE RUNDE</button>
-    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART (neue Spieler)</button>
+    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART</button>
   </div>
 </div>
 
 <!-- ══ PLAY ════════════════════════════════════════════════════════ -->
-<div id="s-play" style="display:none">
+<div id="s-play" style="display:none;flex-direction:row;flex-wrap:nowrap">
 
   <!-- SIDE A -->
   <div class="side side-a" id="side-a">
@@ -325,7 +341,7 @@ const ADMIN_PW = "Wrglpfrmpft";
 // German keyboard: ENTER on far right of bottom row (like real DE keyboard)
 const KB = [
   ["Q","W","E","R","T","Z","U","I","O","P","Ü"],
-  ["A","S","D","F","G","H","J","K","L","Ö","Ä"],
+  ["A","S","D","F","G","H","J","K","L","Ö","Ä","ß"],
   ["Y","X","C","V","B","N","M","⌫","↵"]
 ];
 
@@ -333,15 +349,14 @@ const KB = [
 function chars(w){ return [...w]; }      // handles ä ö ü ß as 1 char each
 function normWord(w){
   return w.trim().toUpperCase()
-    .replace(/SS/g,"ß")                 // optional: keep ß if typed
     .replace(/[^A-ZÄÖÜß]/g,"");
 }
 function wordLen(w){ return chars(w).length; }
 
 window.normPick = function(inp){
-  // Allow typing but keep uppercase + umlauts
   const pos = inp.selectionStart;
-  const v = inp.value.toUpperCase().replace(/[^A-ZÄÖÜß, ]/g,"");
+  // Uppercase but keep ß (ß has no uppercase, stays ß)
+  const v = inp.value.replace(/[Ss][Ss]/g,"ß").toUpperCase().replace(/ß/g,"ß").replace(/[^A-ZÄÖÜß, ]/g,"");
   inp.value = v;
 };
 
@@ -431,9 +446,11 @@ window.hardReset = async function(full){
 };
 
 // ── PICK ────────────────────────────────────────────────────────
-window.submitPick = async function(player){
-  const raw = g("pick-"+player.toLowerCase()).value;
-  const msgEl = g("pick-m"+player.toLowerCase());
+// submitMyPick: each player only submits their own words
+window.submitMyPick = async function(){
+  if(!myRole)return;
+  const raw = g("pick-input-mine").value;
+  const msgEl = g("pick-err-mine");
   const parts = raw.split(",").map(w=>normWord(w)).filter(w=>w.length>0);
   const invalid = parts.filter(w=>wordLen(w)!==5);
   if(!parts.length){msgEl.textContent="Mindestens ein 5-Buchstaben-Wort eingeben";return;}
@@ -441,7 +458,7 @@ window.submitPick = async function(player){
   msgEl.textContent="";
   const now=Date.now();
   const upd={...ST};
-  if(player==="A"){upd.wordListA=parts;upd.pickedA=true;}
+  if(myRole==="A"){upd.wordListA=parts;upd.pickedA=true;}
   else{upd.wordListB=parts;upd.pickedB=true;}
   if(upd.pickedA&&upd.pickedB){
     Object.assign(upd,{
@@ -454,6 +471,18 @@ window.submitPick = async function(player){
   }
   await fsW("duel/state",upd);
 };
+// Keep submitPick for internal use
+async function submitPick(player,parts){
+  const now=Date.now();
+  const upd={...ST};
+  if(player==="A"){upd.wordListA=parts;upd.pickedA=true;}
+  else{upd.wordListB=parts;upd.pickedB=true;}
+  if(upd.pickedA&&upd.pickedB){
+    Object.assign(upd,{phase:"play",histA:[],histB:[],doneA:false,wonA:false,doneB:false,wonB:false,wordIdxA:0,wordIdxB:0,forfeitBy:"",rowStartA:now,rowStartB:now,finishTimeA:null,finishTimeB:null});
+    inp={A:"",B:""}; cur={A:0,B:0};
+  }
+  await fsW("duel/state",upd);
+}
 
 // ── FORFEIT ─────────────────────────────────────────────────────
 window.forfeit = async function(){
@@ -623,11 +652,14 @@ function render(){
   if(!myRole){
     const aFree = ST.phase==="login-a" || !ST.nameA;
     const bFree = !aFree && (ST.phase==="login-b" || !ST.nameB);
-    D("s-la", aFree || (!aFree && !bFree)); // show A login if A-free OR both taken
+    const bothTaken = !aFree && !bFree;
+    D("s-la", aFree);
     D("s-lb", bFree);
+    D("s-locked", bothTaken);
     D("s-pick",false); D("s-play",false); D("s-result",false);
-    el("phase-label").textContent="ANMELDEN";
+    el("phase-label").textContent = bothTaken ? "SPIEL LÄUFT" : "ANMELDEN";
     if(bFree) rLoginB();
+    if(bothTaken) rLocked();
     return;
   }
 
@@ -644,16 +676,58 @@ function render(){
   if(ST.phase==="result"){rResult();stopTimer();}
 }
 
+function rLocked(){
+  const s=ST;
+  el("locked-info").textContent=(s.nameA||"?")+" vs "+(s.nameB||"?")+" spielen gerade"+(s.phase==="play"?" – Duell läuft":s.phase==="pick"?" – Wörter werden gewählt":s.phase==="result"?" – Ergebnis":"")+".";
+  el("locked-pw").value="";
+  el("locked-err").textContent="";
+}
+window.adminReset=async function(){
+  const pw=el("locked-pw").value;
+  if(pw!==ADMIN_PW){el("locked-err").textContent="Falsches Passwort";return;}
+  if(!confirm("Spiel wirklich zurücksetzen? Beide Spieler werden abgemeldet."))return;
+  myRole=null; inp={A:"",B:""}; cur={A:0,B:0}; focusP=null; stopTimer();
+  await fsW("duel/state",fresh());
+};
 function rLoginB(){
   el("lb-info").textContent=ST.nameA+" hat das Spiel gestartet ("+ST.maxFail+" Fehlversuche"+(ST.timerMin?", "+ST.timerMin+"min Timer":"")+(ST.sprint?", Sprint-Modus":"")+"). Gib deinen Namen ein:";
 }
 
 function rPick(){
-  const nA=ST.nameA||"Spieler A",nB=ST.nameB||"Spieler B";
-  el("pick-ta").textContent=nA.toUpperCase()+" WÄHLT FÜR "+nB.toUpperCase();
-  el("pick-tb").textContent=nB.toUpperCase()+" WÄHLT FÜR "+nA.toUpperCase();
-  if(ST.pickedA){D("pick-da",true);D("pick-ba",false);}
-  if(ST.pickedB){D("pick-db",true);D("pick-bb",false);}
+  if(!myRole) return;
+  const nA=ST.nameA||"Spieler A", nB=ST.nameB||"Spieler B";
+  const isA = myRole==="A";
+  const myName = isA ? nA : nB;
+  const oppName = isA ? nB : nA;
+  const myPicked = isA ? ST.pickedA : ST.pickedB;
+  const oppPicked = isA ? ST.pickedB : ST.pickedA;
+
+  // Style my panel with my color
+  const col = isA ? "var(--blue)" : "var(--pink)";
+  const dim = isA ? "var(--blue-dim)" : "var(--pink-dim)";
+  const border = isA ? "var(--blue-border)" : "var(--pink-border)";
+  el("pick-mine").style.borderColor = border;
+  el("pick-title-mine").style.color = col;
+  el("pick-title-mine").textContent = myName.toUpperCase()+" WÄHLT WÖRTER FÜR "+oppName.toUpperCase();
+  el("pick-btn-mine").style.borderColor = border;
+  el("pick-btn-mine").style.color = col;
+  el("pick-btn-mine").style.background = dim;
+
+  if(myPicked){
+    D("pick-done-mine", true);
+    D("pick-btn-mine", false);
+    el("pick-input-mine").disabled = true;
+  } else {
+    D("pick-done-mine", false);
+    D("pick-btn-mine", true);
+    el("pick-input-mine").disabled = false;
+  }
+
+  // Opponent status
+  const oppDot = oppPicked
+    ? `<span style="color:var(--green)">✅ ${oppName} hat Wörter gesetzt</span>`
+    : `<span style="color:var(--text3)">⏳ warte auf ${oppName}…</span>`;
+  el("pick-opp-text").innerHTML = oppDot;
 }
 
 function rPlay(){
@@ -662,6 +736,15 @@ function rPlay(){
   el("pname-b").textContent=nB.toUpperCase();
   el("opp-lbl-a").textContent=nB.toUpperCase()+" RATET…";
   el("opp-lbl-b").textContent=nA.toUpperCase()+" RATET…";
+  // On mobile: hide the other player's big side
+  const isMobile = window.innerWidth <= 660;
+  if(isMobile && myRole){
+    el("side-a").classList.toggle("hide-on-mobile", myRole!=="A");
+    el("side-b").classList.toggle("hide-on-mobile", myRole!=="B");
+  } else {
+    el("side-a").classList.remove("hide-on-mobile");
+    el("side-b").classList.remove("hide-on-mobile");
+  }
   const maxF=ST.maxFail||6;
   const wlA=ST.wordListB||[],wlB=ST.wordListA||[];
   const tA=wlA[(ST.wordIdxA||0)%wlA.length]||"?????";
