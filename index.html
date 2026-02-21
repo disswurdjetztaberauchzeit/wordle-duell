@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Wordle Duell</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#050505;--bg2:#0f0f0f;--bg3:#1a1a1a;
+  --border:#2a2a2a;--border2:#404040;
+  --text:#f0f0f0;--text2:#bbb;--text3:#777;
+  --blue:#6ec0ff;--blue-dim:#0a1e36;--blue-border:#3a7acc;
+  --pink:#ff8bb8;--pink-dim:#2a0a18;--pink-border:#cc3a7a;
+  --green:#44cc5a;--green-dim:#082210;--green-dark:#2a7a38;
+  --yellow:#e0a020;--yellow-dim:#241800;
+  --red:#ff3344;--red-dim:#1a0508;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px 8px 60px}
+.title{font-size:28px;letter-spacing:10px;font-weight:700;background:linear-gradient(90deg,var(--blue),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center}
+.sub{color:var(--text3);font-size:10px;letter-spacing:4px;margin-top:4px;text-align:center}
+.panel{background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:24px}
+button{font-family:'Courier New',monospace;cursor:pointer;letter-spacing:1px;transition:all 0.15s;border-radius:5px;border:none;font-size:12px}
+.btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);padding:9px 18px}
+.btn:hover{border-color:#888;color:var(--text)}
+.btn-go{background:linear-gradient(135deg,#0d2a4a,#2a0d1a);border:1px solid var(--border2);color:var(--text);padding:12px 36px;font-size:13px;letter-spacing:2px}
+.btn-go:hover{border-color:#888}
+.btn-danger{border:1px solid #5a1515;color:var(--red);background:#120505;padding:7px 14px;font-size:10px}
+label{color:var(--text2);font-size:10px;letter-spacing:2px;display:block;margin-bottom:5px;margin-top:14px}
+.hint{color:var(--text3);font-size:10px;letter-spacing:0;margin-top:3px}
+input[type=text],input[type=password],input[type=number]{
+  background:var(--bg);border:1px solid var(--border2);color:var(--text);
+  border-radius:5px;padding:11px 13px;font-family:'Courier New',monospace;
+  font-size:15px;width:100%;outline:none;transition:border-color 0.2s}
+input:focus{border-color:#888}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* toggle */
+.toggle-row{display:flex;align-items:center;gap:10px;margin-top:14px}
+.toggle{position:relative;width:44px;height:24px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;cursor:pointer;transition:.3s}
+.toggle-slider:before{content:"";position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--text3);border-radius:50%;transition:.3s}
+.toggle input:checked + .toggle-slider{background:var(--green-dim);border-color:var(--green)}
+.toggle input:checked + .toggle-slider:before{transform:translateX(20px);background:var(--green)}
+
+/* tiles */
+.tile{width:54px;height:54px;display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;border-radius:5px;
+  border:2px solid var(--border2);background:var(--bg2);color:transparent;
+  transition:background 0.25s,border-color 0.25s,color 0.15s,transform 0.1s;
+  flex-shrink:0;user-select:none}
+.tile.mini{width:26px;height:26px;font-size:11px;border-radius:3px;border-width:1px}
+.tile.fa{border-color:var(--blue);background:var(--blue-dim);color:var(--blue)}
+.tile.fb{border-color:var(--pink);background:var(--pink-dim);color:var(--pink)}
+.tile.correct{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.tile.present{background:var(--yellow-dim);border-color:var(--yellow);color:var(--yellow)}
+.tile.absent{background:#111;border-color:#222;color:#555}
+.tile.locked{background:#181818;border-color:#2a2a2a;color:#444}
+.tile.cur-a{box-shadow:0 0 0 2px var(--blue),0 0 8px #6ec0ff44;border-color:var(--blue)}
+.tile.cur-b{box-shadow:0 0 0 2px var(--pink),0 0 8px #ff8bb844;border-color:var(--pink)}
+.tile.editable:hover{transform:scale(1.1);cursor:pointer}
+.grid{display:flex;flex-direction:column;gap:5px}
+.grid-row{display:flex;gap:5px}
+
+/* keyboard — last row: Y X C V B N M ⌫ | ENTER (right, big, green) */
+.keyboard{display:flex;flex-direction:column;gap:5px;margin-top:12px;width:100%}
+.kb-row{display:flex;gap:4px;justify-content:center}
+.key{background:var(--bg3);color:var(--text);border:1px solid var(--border2);
+  border-radius:5px;font-weight:700;height:44px;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-family:'Courier New',monospace;
+  transition:background 0.15s;min-width:32px;padding:0 4px}
+.key:active{transform:scale(0.92)}
+.key.k-del{min-width:46px;font-size:18px;color:var(--text2)}
+.key.k-enter{
+  min-width:80px;font-size:12px;font-weight:700;letter-spacing:1px;
+  background:var(--green-dark);color:#fff;border:1px solid var(--green);
+  flex-shrink:0}
+.key.k-enter:hover{background:var(--green);color:#fff}
+.key.k-enter:active{transform:scale(0.93)}
+.key.kc{background:var(--green-dim);color:var(--green);border-color:var(--green)}
+.key.kp{background:var(--yellow-dim);color:var(--yellow);border-color:var(--yellow)}
+.key.ka{background:#0a0a0a;color:#444;border-color:#1a1a1a}
+
+/* play screen */
+#play-screen{display:flex;width:100%;max-width:1020px;gap:2px}
+.side{flex:1;display:flex;flex-direction:column;align-items:center;padding:14px 10px;border-top:3px solid;min-width:0}
+.side-a{background:#060e1c;border-color:var(--blue)}
+.side-b{background:#1c060e;border-color:var(--pink);border-left:1px solid #111}
+.opp{width:100%;padding:8px 10px;background:rgba(0,0,0,0.4);border-radius:6px;
+  border:1px solid var(--border);margin-top:14px}
+.timer-wrap{width:100%;margin-bottom:10px}
+.timer-bar{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.timer-fill{height:100%;border-radius:3px;transition:width 0.4s linear,background 0.4s}
+.timer-lbl{font-size:11px;text-align:right;margin-top:3px;font-weight:700;min-height:16px}
+.toast{background:var(--bg2);border:1px solid var(--border2);border-radius:5px;
+  padding:9px 22px;font-size:12px;color:var(--text);margin-bottom:12px;
+  text-align:center;animation:fd 0.2s;max-width:500px;width:100%}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #111;font-size:12px}
+#admin-panel{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:100;align-items:center;justify-content:center}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 2px;animation:pulse 1.3s infinite}
+@keyframes fd{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.shake{animation:shake 0.4s}
+@media(max-width:660px){
+  #play-screen{flex-direction:column}
+  .side-b{border-left:none;border-top:2px solid var(--pink)}
+  .tile{width:46px;height:46px;font-size:19px}
+  .tile.mini{width:22px;height:22px;font-size:9px}
+  .key{height:40px;font-size:13px;min-width:27px}
+  .key.k-enter{min-width:64px;font-size:10px}
+  .key.k-del{min-width:38px}
+}
+</style>
+</head>
+<body>
+
+<div style="text-align:center;margin-bottom:16px;width:100%">
+  <div class="title">WORDLE DUELL</div>
+  <div id="phase-label" class="sub"></div>
+</div>
+<div id="toast" class="toast" style="display:none"></div>
+
+<!-- QR always visible -->
+<div style="text-align:center;margin-bottom:18px;opacity:0.6">
+  <div style="font-size:9px;letter-spacing:3px;color:var(--text3);margin-bottom:8px">MITSPIELEN</div>
+  <div id="qrcode" style="display:inline-block;background:#fff;padding:8px;border-radius:6px"></div>
+  <div style="font-size:9px;color:var(--text3);margin-top:6px">disswurdjetztaberauchzeit.github.io/wordle-duell</div>
+</div>
+
+<!-- ══ LOGIN A ════════════════════════════════════════════════════ -->
+<div id="s-la" style="display:none;width:100%;max-width:440px">
+  <div class="panel" style="border-color:var(--blue-border)">
+    <div style="color:var(--blue);font-size:11px;letter-spacing:4px;margin-bottom:6px;font-weight:700">SPIELER 1</div>
+    <div style="color:var(--text3);font-size:11px;margin-bottom:20px">Gib deinen Namen und die Spieleinstellungen ein.</div>
+
+    <label>DEIN NAME</label>
+    <input type="text" id="la-name" placeholder="Name..." maxlength="20" onkeydown="if(event.key==='Enter')loginA()"/>
+
+    <label>MAX. FEHLVERSUCHE <span class="hint">(gilt für beide)</span></label>
+    <input type="number" id="la-fail" value="6" min="1" max="20"/>
+
+    <label>TIMER PRO ZEILE <span class="hint">(Minuten, 0 = kein Timer)</span></label>
+    <input type="number" id="la-timer" value="0" min="0" max="30" step="0.5" style="margin-bottom:4px"/>
+
+    <div class="toggle-row" style="margin-bottom:20px">
+      <label class="toggle" style="margin:0">
+        <input type="checkbox" id="la-sprint"/>
+        <span class="toggle-slider"></span>
+      </label>
+      <div>
+        <div style="color:var(--text);font-size:11px;letter-spacing:1px">SPRINT-MODUS</div>
+        <div style="color:var(--text3);font-size:10px;margin-top:2px">Gewinner = schnellste Lösung. Jede extra Zeile = +Timer-Zeit als Strafe.</div>
+      </div>
+    </div>
+
+    <button class="btn-go" style="width:100%" onclick="loginA()">WEITER →</button>
+  </div>
+  <div style="text-align:center;margin-top:12px;display:flex;gap:10px;justify-content:center">
+    <button class="btn" onclick="showAdmin()">STATISTIK (ADMIN)</button>
+    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART</button>
+  </div>
+</div>
+
+<!-- ══ LOGIN B ════════════════════════════════════════════════════ -->
+<div id="s-lb" style="display:none;width:100%;max-width:440px">
+  <div class="panel" style="border-color:var(--pink-border)">
+    <div style="color:var(--pink);font-size:11px;letter-spacing:4px;margin-bottom:6px;font-weight:700">SPIELER 2</div>
+    <div id="lb-info" style="color:var(--text3);font-size:11px;margin-bottom:20px"></div>
+
+    <label>DEIN NAME</label>
+    <input type="text" id="lb-name" placeholder="Name..." maxlength="20" onkeydown="if(event.key==='Enter')loginB()"/>
+    <div id="lb-err" style="color:var(--red);font-size:10px;min-height:14px;margin-top:4px;margin-bottom:16px"></div>
+
+    <button class="btn-go" style="width:100%" onclick="loginB()">SPIELEN →</button>
+
+    <div id="lb-wait" style="display:none;color:var(--text3);font-size:11px;text-align:center;margin-top:16px;padding:10px">
+      <span class="dot" style="background:var(--pink)"></span>
+      <span class="dot" style="background:var(--blue);animation-delay:.4s"></span>
+      <span class="dot" style="background:var(--pink);animation-delay:.8s"></span>
+      <div style="margin-top:8px" id="lb-wait-msg"></div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:12px">
+    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART</button>
+  </div>
+</div>
+
+<!-- ══ PICK ═══════════════════════════════════════════════════════ -->
+<div id="s-pick" style="display:none;width:100%;max-width:760px">
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center">
+    <div class="panel" style="border-color:var(--blue-border);min-width:280px;flex:1">
+      <div id="pick-ta" style="color:var(--blue);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
+      <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
+      <input type="text" id="pick-a" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
+        oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('A')"/>
+      <div id="pick-ma" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
+      <div id="pick-da" style="display:none;color:var(--green);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
+      <button class="btn" id="pick-ba" style="border-color:var(--blue-border);color:var(--blue);background:var(--blue-dim);width:100%" onclick="submitPick('A')">FESTLEGEN →</button>
+    </div>
+    <div class="panel" style="border-color:var(--pink-border);min-width:280px;flex:1">
+      <div id="pick-tb" style="color:var(--pink);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
+      <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
+      <input type="text" id="pick-b" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
+        oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('B')"/>
+      <div id="pick-mb" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
+      <div id="pick-db" style="display:none;color:var(--pink);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
+      <button class="btn" id="pick-bb" style="border-color:var(--pink-border);color:var(--pink);background:var(--pink-dim);width:100%" onclick="submitPick('B')">FESTLEGEN →</button>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
+    <button class="btn" onclick="hardReset(false)">↺ NEUE RUNDE</button>
+    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART (neue Spieler)</button>
+  </div>
+</div>
+
+<!-- ══ PLAY ════════════════════════════════════════════════════════ -->
+<div id="s-play" style="display:none">
+
+  <!-- SIDE A -->
+  <div class="side side-a" id="side-a">
+    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span id="pname-a" style="color:var(--blue);font-size:13px;font-weight:700;letter-spacing:3px"></span>
+      <span id="patt-a" style="color:var(--text3);font-size:11px"></span>
+    </div>
+    <div class="timer-wrap" id="tw-a" style="display:none">
+      <div class="timer-bar"><div class="timer-fill" id="tf-a" style="width:100%"></div></div>
+      <div class="timer-lbl" id="tl-a"></div>
+    </div>
+    <div id="done-a" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:10px;text-align:center;font-size:12px;letter-spacing:1px;width:100%"></div>
+    <div id="grid-a" class="grid"></div>
+    <div id="kb-a" class="keyboard"></div>
+    <!-- Opponent mini view -->
+    <div class="opp">
+      <div id="opp-lbl-a" style="color:var(--text3);font-size:9px;letter-spacing:2px;margin-bottom:6px"></div>
+      <div id="mini-b" class="grid"></div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
+      <button class="btn" onclick="hardReset(true)">↺ NEUSTART</button>
+    </div>
+  </div>
+
+  <!-- SIDE B -->
+  <div class="side side-b" id="side-b">
+    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span id="pname-b" style="color:var(--pink);font-size:13px;font-weight:700;letter-spacing:3px"></span>
+      <span id="patt-b" style="color:var(--text3);font-size:11px"></span>
+    </div>
+    <div class="timer-wrap" id="tw-b" style="display:none">
+      <div class="timer-bar"><div class="timer-fill" id="tf-b" style="width:100%"></div></div>
+      <div class="timer-lbl" id="tl-b"></div>
+    </div>
+    <div id="done-b" style="display:none;border-radius:6px;padding:9px 14px;margin-bottom:10px;text-align:center;font-size:12px;letter-spacing:1px;width:100%"></div>
+    <div id="grid-b" class="grid"></div>
+    <div id="kb-b" class="keyboard"></div>
+    <!-- Opponent mini view -->
+    <div class="opp">
+      <div id="opp-lbl-b" style="color:var(--text3);font-size:9px;letter-spacing:2px;margin-bottom:6px"></div>
+      <div id="mini-a" class="grid"></div>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+      <button class="btn btn-danger" onclick="forfeit()">✗ AUFGEBEN</button>
+      <button class="btn" onclick="hardReset(true)">↺ NEUSTART</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RESULT ══════════════════════════════════════════════════════ -->
+<div id="s-result" style="display:none;flex-direction:column;align-items:center">
+  <div id="winner-text" style="font-size:20px;letter-spacing:6px;font-weight:700;margin-bottom:22px;text-align:center"></div>
+  <div id="result-cards" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;margin-bottom:24px"></div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <button class="btn-go" onclick="hardReset(false)">NÄCHSTE RUNDE →</button>
+    <button class="btn btn-danger" onclick="hardReset(true)">↺ NEUSTART (neue Spieler)</button>
+  </div>
+</div>
+
+<!-- ══ ADMIN ═══════════════════════════════════════════════════════ -->
+<div id="admin-panel">
+  <div class="panel" style="border-color:var(--border2);min-width:320px;max-width:580px;width:94%;max-height:88vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="color:var(--text2);font-size:12px;letter-spacing:4px">STATISTIK</div>
+      <button class="btn" onclick="closeAdmin()">✕</button>
+    </div>
+    <div id="admin-login-div">
+      <div style="color:var(--text3);font-size:10px;line-height:1.9;margin-bottom:12px">
+        Merksatz: »Ich mag Worte, die man nicht aussprechen kann.« – Karl Valentin
+      </div>
+      <input type="password" id="admin-pw" placeholder="Passwort..." onkeydown="if(event.key==='Enter')checkPw()"/>
+      <button class="btn" style="width:100%;margin-top:6px" onclick="checkPw()">ENTSPERREN</button>
+      <div id="admin-msg" style="color:var(--red);font-size:10px;margin-top:8px;min-height:14px"></div>
+    </div>
+    <div id="admin-content" style="display:none">
+      <div id="stats-list"></div>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #111;display:flex;gap:10px">
+        <button class="btn btn-danger" style="flex:1" onclick="clearStats()">LÖSCHEN</button>
+        <button class="btn" style="flex:1" onclick="closeAdmin()">SCHLIESSEN</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, setDoc, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const db = getFirestore(initializeApp({
+  apiKey:"AIzaSyCCMItvN8RNbnWi_V6KdBmhYwFxl53R9R0",
+  authDomain:"wordle-duell.firebaseapp.com",
+  projectId:"wordle-duell",
+  storageBucket:"wordle-duell.firebasestorage.app",
+  messagingSenderId:"10346209099",
+  appId:"1:10346209099:web:409827941bd01a5b6c12ce"
+}));
+
+// »Ich mag Worte, die man nicht aussprechen kann.« – Karl Valentin
+const ADMIN_PW = "Wrglpfrmpft";
+
+// German keyboard: ENTER on far right of bottom row (like real DE keyboard)
+const KB = [
+  ["Q","W","E","R","T","Z","U","I","O","P","Ü"],
+  ["A","S","D","F","G","H","J","K","L","Ö","Ä"],
+  ["Y","X","C","V","B","N","M","⌫","↵"]
+];
+
+// ── Normalize word: uppercase, keep A-Z Ä Ö Ü ß, count graphemes ──
+function chars(w){ return [...w]; }      // handles ä ö ü ß as 1 char each
+function normWord(w){
+  return w.trim().toUpperCase()
+    .replace(/SS/g,"ß")                 // optional: keep ß if typed
+    .replace(/[^A-ZÄÖÜß]/g,"");
+}
+function wordLen(w){ return chars(w).length; }
+
+window.normPick = function(inp){
+  // Allow typing but keep uppercase + umlauts
+  const pos = inp.selectionStart;
+  const v = inp.value.toUpperCase().replace(/[^A-ZÄÖÜß, ]/g,"");
+  inp.value = v;
+};
+
+// ── Local state (per browser — NOT synced) ──────────────────────
+let myRole = null;   // "A" or "B" — set once at login, never changes
+let myName = "";     // local name copy so we never overwrite the other
+let inp = {A:"", B:""};
+let cur = {A:0, B:0};
+let focusP = null;   // which side physical keyboard controls
+
+// ── Shared state (Firebase) ─────────────────────────────────────
+let ST = null, unsub = null, timerIv = null, adminOpen = false;
+
+function fresh(){
+  return{
+    phase:"login-a",
+    nameA:"", nameB:"",
+    maxFail:6, timerMin:0, sprint:false,
+    wordListA:[], wordListB:[],
+    wordIdxA:0, wordIdxB:0,
+    pickedA:false, pickedB:false,
+    histA:[], histB:[],
+    doneA:false, wonA:false,
+    doneB:false, wonB:false,
+    forfeitBy:"",
+    rowStartA:null, rowStartB:null,
+    finishTimeA:null, finishTimeB:null   // for sprint mode
+  };
+}
+
+async function fsR(p){const[c,i]=p.split("/");const s=await getDoc(doc(db,c,i));return s.exists()?s.data():null;}
+async function fsW(p,d){const[c,i]=p.split("/");await setDoc(doc(db,c,i),d);}
+
+function sub(){
+  if(unsub)unsub();
+  unsub=onSnapshot(doc(db,"duel","state"),snap=>{
+    ST=snap.exists()?snap.data():fresh();
+    if(!snap.exists())fsW("duel/state",ST);
+    render();
+  });
+}
+
+// ── LOGIN A ─────────────────────────────────────────────────────
+window.loginA = async function(){
+  const name = g("la-name").value.trim();
+  if(!name){toast("Bitte Namen eingeben");return;}
+  const mf   = parseInt(g("la-fail").value)||6;
+  const tm   = parseFloat(g("la-timer").value)||0;
+  const sp   = g("la-sprint").checked;
+  myRole = "A";
+  myName = name;
+  await fsW("duel/state",{...fresh(), phase:"login-b", nameA:name, maxFail:mf, timerMin:tm, sprint:sp});
+};
+
+// ── LOGIN B ─────────────────────────────────────────────────────
+window.loginB = async function(){
+  const name = g("lb-name").value.trim();
+  g("lb-err").textContent="";
+  if(!name){toast("Bitte Namen eingeben");return;}
+  if(!ST||!ST.nameA){toast("Warte auf Spieler 1");return;}
+  // Prevent same name
+  if(name===ST.nameA){g("lb-err").textContent="Name bereits vergeben – bitte einen anderen wählen.";return;}
+  myRole = "B";
+  myName = name;
+  g("lb-wait").style.display="block";
+  g("lb-wait-msg").textContent=name+" tritt bei…";
+  await fsW("duel/state",{...ST, phase:"pick", nameB:name});
+};
+
+// ── HARD RESET ──────────────────────────────────────────────────
+window.hardReset = async function(full){
+  const msg = full
+    ? "Neustart? Beide Spieler müssen sich neu anmelden."
+    : "Neue Runde mit denselben Spielern?";
+  if(!confirm(msg))return;
+  myRole=null; myName=""; inp={A:"",B:""}; cur={A:0,B:0}; focusP=null;
+  stopTimer();
+  if(full){
+    await fsW("duel/state",fresh());
+  }else{
+    const s=fresh();
+    s.nameA=ST.nameA||""; s.nameB=ST.nameB||"";
+    s.maxFail=ST.maxFail||6; s.timerMin=ST.timerMin||0; s.sprint=ST.sprint||false;
+    s.phase="pick";
+    await fsW("duel/state",s);
+  }
+};
+
+// ── PICK ────────────────────────────────────────────────────────
+window.submitPick = async function(player){
+  const raw = g("pick-"+player.toLowerCase()).value;
+  const msgEl = g("pick-m"+player.toLowerCase());
+  const parts = raw.split(",").map(w=>normWord(w)).filter(w=>w.length>0);
+  const invalid = parts.filter(w=>wordLen(w)!==5);
+  if(!parts.length){msgEl.textContent="Mindestens ein 5-Buchstaben-Wort eingeben";return;}
+  if(invalid.length){msgEl.textContent="Nicht 5 Buchstaben: "+invalid.join(", ");return;}
+  msgEl.textContent="";
+  const now=Date.now();
+  const upd={...ST};
+  if(player==="A"){upd.wordListA=parts;upd.pickedA=true;}
+  else{upd.wordListB=parts;upd.pickedB=true;}
+  if(upd.pickedA&&upd.pickedB){
+    Object.assign(upd,{
+      phase:"play",histA:[],histB:[],
+      doneA:false,wonA:false,doneB:false,wonB:false,
+      wordIdxA:0,wordIdxB:0,forfeitBy:"",
+      rowStartA:now,rowStartB:now,finishTimeA:null,finishTimeB:null
+    });
+    inp={A:"",B:""}; cur={A:0,B:0};
+  }
+  await fsW("duel/state",upd);
+};
+
+// ── FORFEIT ─────────────────────────────────────────────────────
+window.forfeit = async function(){
+  if(!confirm("Wirklich aufgeben?"))return;
+  const upd={...ST,forfeitBy:myRole||"?",phase:"result",doneA:true,doneB:true};
+  if(myRole==="A"){upd.wonA=false;upd.wonB=true;}else{upd.wonB=false;upd.wonA=true;}
+  upd.finishTimeA=upd.finishTimeA||Date.now();
+  upd.finishTimeB=upd.finishTimeB||Date.now();
+  await fsW("duel/state",upd);
+  await saveResult(upd);
+};
+
+// ── WORDLE LOGIC ─────────────────────────────────────────────────
+function evaluate(guess,target){
+  const g=chars(guess),t=chars(target);
+  const res=Array(5).fill("absent");
+  g.forEach((c,i)=>{if(c===t[i]){res[i]="correct";t[i]=null;g[i]=null;}});
+  g.forEach((c,i)=>{if(!c)return;const ti=t.indexOf(c);if(ti!==-1){res[i]="present";t[ti]=null;}});
+  return res;
+}
+function kbSt(letter,hist){
+  let best="unused";
+  for(const row of hist){
+    chars(row.word).forEach((c,i)=>{
+      if(c!==letter)return;
+      const s=row.states[i];
+      if(s==="correct")best="correct";
+      else if(s==="present"&&best!=="correct")best="present";
+      else if(s==="absent"&&best==="unused")best="absent";
+    });
+  }
+  return best;
+}
+
+function insertAt(str,pos,ch){
+  const arr=chars(("     ").split("").map((_,i)=>chars(str)[i]||" ").join(""));
+  // rebuild 5-char array
+  const a=[];
+  for(let i=0;i<5;i++)a.push(chars(str)[i]||" ");
+  a[pos]=ch;
+  return a.join("").replace(/ +$/,"");
+}
+
+// ── SUBMIT GUESS ─────────────────────────────────────────────────
+async function submitGuess(player){
+  if(!ST||ST.phase!=="play")return;
+  if(player==="A"?ST.doneA:ST.doneB)return;
+  const word=inp[player]||"";
+  const wlist=player==="A"?ST.wordListB:ST.wordListA;
+  const widx=player==="A"?ST.wordIdxA:ST.wordIdxB;
+  const target=wlist[widx%wlist.length];
+  const maxF=ST.maxFail||6;
+  if(wordLen(word)!==5){shake(player);toast("5 Buchstaben nötig");return;}
+  const states=evaluate(word,target);
+  const won=chars(word).join("")===chars(target).join("");
+  const now=Date.now();
+  const upd={...ST,histA:[...ST.histA],histB:[...ST.histB]};
+  if(player==="A"){
+    upd.histA.push({word,states});
+    upd.rowStartA=now;
+    if(won&&upd.wordIdxA+1<wlist.length){upd.wordIdxA++;upd.histA=[];}
+    else if(won||upd.histA.length>=maxF){upd.doneA=true;upd.wonA=won;if(!upd.finishTimeA)upd.finishTimeA=now;}
+    inp.A=""; cur.A=0;
+  }else{
+    upd.histB.push({word,states});
+    upd.rowStartB=now;
+    if(won&&upd.wordIdxB+1<wlist.length){upd.wordIdxB++;upd.histB=[];}
+    else if(won||upd.histB.length>=maxF){upd.doneB=true;upd.wonB=won;if(!upd.finishTimeB)upd.finishTimeB=now;}
+    inp.B=""; cur.B=0;
+  }
+  if(upd.doneA&&upd.doneB){upd.phase="result";await fsW("duel/state",upd);await saveResult(upd);}
+  else await fsW("duel/state",upd);
+}
+
+function shake(p){
+  const g=el("grid-"+p.toLowerCase());
+  const h=p==="A"?ST.histA:ST.histB;
+  const row=g&&g.querySelectorAll(".grid-row")[h.length];
+  if(row){row.classList.add("shake");setTimeout(()=>row.classList.remove("shake"),400);}
+}
+
+// ── TIMER ────────────────────────────────────────────────────────
+function stopTimer(){if(timerIv){clearInterval(timerIv);timerIv=null;}}
+
+function startTimer(){
+  stopTimer();
+  timerIv=setInterval(async()=>{
+    if(!ST||ST.phase!=="play")return;
+    const tm=ST.timerMin||0;
+    for(const p of["A","B"]){
+      const fill=el("tf-"+p.toLowerCase());
+      const lbl=el("tl-"+p.toLowerCase());
+      const wrap=el("tw-"+p.toLowerCase());
+      if(!fill||!lbl||!wrap)continue;
+      if(!tm){wrap.style.display="none";continue;}
+      wrap.style.display="block";
+      const done=p==="A"?ST.doneA:ST.doneB;
+      if(done){fill.style.width="0%";lbl.textContent="";continue;}
+      const startTs=p==="A"?ST.rowStartA:ST.rowStartB;
+      if(!startTs)continue;
+      const totalMs=tm*60000;
+      const elapsed=Date.now()-startTs;
+      const remaining=Math.max(0,totalMs-elapsed);
+      const pct=(remaining/totalMs)*100;
+      const secs=Math.ceil(remaining/1000);
+      const m=Math.floor(secs/60),s=secs%60;
+      const col=pct>55?"var(--green)":pct>20?"var(--yellow)":"var(--red)";
+      fill.style.width=pct+"%";fill.style.background=col;
+      lbl.style.color=col;
+      lbl.textContent=(m>0?m+"m ":"")+s+"s";
+      // Time's up — only my role acts
+      if(elapsed>=totalMs&&myRole===p){
+        const wlist=p==="A"?ST.wordListB:ST.wordListA;
+        const widx=p==="A"?ST.wordIdxA:ST.wordIdxB;
+        const target=wlist[widx%wlist.length];
+        // Fill row with dashes (one per target char)
+        const dashes=chars(target).map(()=>"—").join("");
+        const lockedStates=Array(5).fill("absent");
+        const now=Date.now();
+        const upd={...ST,histA:[...ST.histA],histB:[...ST.histB]};
+        if(p==="A"){
+          upd.histA.push({word:dashes,states:lockedStates,locked:true});
+          upd.rowStartA=now;
+          if(upd.histA.length>=(upd.maxFail||6)){upd.doneA=true;upd.wonA=false;if(!upd.finishTimeA)upd.finishTimeA=now;}
+          inp.A=""; cur.A=0;
+        }else{
+          upd.histB.push({word:dashes,states:lockedStates,locked:true});
+          upd.rowStartB=now;
+          if(upd.histB.length>=(upd.maxFail||6)){upd.doneB=true;upd.wonB=false;if(!upd.finishTimeB)upd.finishTimeB=now;}
+          inp.B=""; cur.B=0;
+        }
+        if(upd.doneA&&upd.doneB){upd.phase="result";await fsW("duel/state",upd);await saveResult(upd);}
+        else await fsW("duel/state",upd);
+      }
+    }
+  },400);
+}
+
+// ── PHYSICAL KEYBOARD ────────────────────────────────────────────
+// Each side has click handler to set focusP
+document.addEventListener("keydown",e=>{
+  const p=focusP||myRole;
+  if(!p||adminOpen||!ST||ST.phase!=="play")return;
+  if(p==="A"?ST.doneA:ST.doneB)return;
+  if(e.key==="Enter"){submitGuess(p);return;}
+  const pos=cur[p];
+  if(e.key==="Backspace"){
+    const a=[];for(let i=0;i<5;i++)a.push(chars(inp[p]||"")[i]||" ");
+    a.splice(pos,1);a.push(" ");
+    inp[p]=a.join("").replace(/ +$/,"");
+    cur[p]=Math.max(0,pos-1);
+    render();return;
+  }
+  const k=e.key.length===1?e.key.toUpperCase():null;
+  if(k&&/^[A-ZÄÖÜß]$/.test(k)){
+    inp[p]=insertAt(inp[p]||"",pos,k);
+    cur[p]=Math.min(4,pos+1);
+    render();
+  }
+});
+
+// ── RENDER ───────────────────────────────────────────────────────
+function render(){
+  if(!ST)return;
+  const labels={"login-a":"ANMELDEN","login-b":"ANMELDEN","pick":"WÖRTER WÄHLEN","play":"DUELL","result":"ERGEBNIS"};
+  el("phase-label").textContent=labels[ST.phase]||"";
+  D("s-la",ST.phase==="login-a");
+  D("s-lb",ST.phase==="login-b");
+  D("s-pick",ST.phase==="pick");
+  D("s-play",ST.phase==="play","flex");
+  D("s-result",ST.phase==="result","flex");
+  if(ST.phase==="login-b")rLoginB();
+  if(ST.phase==="pick")rPick();
+  if(ST.phase==="play"){rPlay();startTimer();}
+  if(ST.phase==="result"){rResult();stopTimer();}
+}
+
+function rLoginB(){
+  el("lb-info").textContent=ST.nameA+" hat das Spiel gestartet ("+ST.maxFail+" Fehlversuche"+(ST.timerMin?", "+ST.timerMin+"min Timer":"")+(ST.sprint?", Sprint-Modus":"")+"). Gib deinen Namen ein:";
+}
+
+function rPick(){
+  const nA=ST.nameA||"Spieler A",nB=ST.nameB||"Spieler B";
+  el("pick-ta").textContent=nA.toUpperCase()+" WÄHLT FÜR "+nB.toUpperCase();
+  el("pick-tb").textContent=nB.toUpperCase()+" WÄHLT FÜR "+nA.toUpperCase();
+  if(ST.pickedA){D("pick-da",true);D("pick-ba",false);}
+  if(ST.pickedB){D("pick-db",true);D("pick-bb",false);}
+}
+
+function rPlay(){
+  const nA=ST.nameA||"A",nB=ST.nameB||"B";
+  el("pname-a").textContent=nA.toUpperCase();
+  el("pname-b").textContent=nB.toUpperCase();
+  el("opp-lbl-a").textContent=nB.toUpperCase()+" RATET…";
+  el("opp-lbl-b").textContent=nA.toUpperCase()+" RATET…";
+  const maxF=ST.maxFail||6;
+  const wlA=ST.wordListB||[],wlB=ST.wordListA||[];
+  const tA=wlA[(ST.wordIdxA||0)%wlA.length]||"?????";
+  const tB=wlB[(ST.wordIdxB||0)%wlB.length]||"?????";
+  let aA=ST.histA.length+"/"+maxF,aB=ST.histB.length+"/"+maxF;
+  if(wlA.length>1)aA+=" · "+((ST.wordIdxA||0)+1)+"/"+wlA.length;
+  if(wlB.length>1)aB+=" · "+((ST.wordIdxB||0)+1)+"/"+wlB.length;
+  el("patt-a").textContent=aA;
+  el("patt-b").textContent=aB;
+  el("tw-a").style.display=ST.timerMin>0?"block":"none";
+  el("tw-b").style.display=ST.timerMin>0?"block":"none";
+  rGrid("grid-a",ST.histA,inp.A,cur.A,tA,"A",maxF);
+  rGrid("grid-b",ST.histB,inp.B,cur.B,tB,"B",maxF);
+  rMini("mini-a",ST.histA);
+  rMini("mini-b",ST.histB);
+  rDone("done-a",ST.doneA,ST.wonA,tA,"A");
+  rDone("done-b",ST.doneB,ST.wonB,tB,"B");
+  rKB("kb-a",ST.histA,"A");
+  rKB("kb-b",ST.histB,"B");
+}
+
+function rGrid(id,hist,input,cursor,target,player,maxF){
+  const c=el(id);c.innerHTML="";
+  const done=player==="A"?ST.doneA:ST.doneB;
+  const rows=Math.max(maxF,hist.length+(done?0:1));
+  for(let r=0;r<rows;r++){
+    const row=document.createElement("div");row.className="grid-row";
+    const committed=r<hist.length,current=r===hist.length&&!done;
+    const isLocked=committed&&hist[r].locked;
+    const wChars=committed?chars(hist[r].word):current?chars(input):[];
+    const states=committed?hist[r].states:null;
+    for(let i=0;i<5;i++){
+      const t=document.createElement("div");t.className="tile";
+      const ch=wChars[i]||"";t.textContent=ch;
+      if(committed){
+        t.classList.add(isLocked?"locked":states[i]);
+      }else if(current){
+        if(ch)t.classList.add("f"+player.toLowerCase());
+        if(i===cursor&&!done)t.classList.add("cur-"+player.toLowerCase());
+        t.classList.add("editable");
+        const cc=i;
+        t.addEventListener("click",e=>{e.stopPropagation();cur[player]=cc;focusP=player;render();});
+      }
+      row.appendChild(t);
+    }
+    c.appendChild(row);
+  }
+}
+
+function rMini(id,hist){
+  const c=el(id);c.innerHTML="";
+  for(let r=0;r<6;r++){
+    const row=document.createElement("div");row.style.cssText="display:flex;gap:3px;margin-bottom:3px";
+    const committed=r<hist.length;
+    for(let i=0;i<5;i++){
+      const t=document.createElement("div");t.className="tile mini";
+      if(committed)t.classList.add(hist[r].locked?"locked":hist[r].states[i]);
+      row.appendChild(t);
+    }
+    c.appendChild(row);
+  }
+}
+
+function rDone(id,done,won,word,player){
+  const e=el(id);
+  if(!done){e.style.display="none";return;}
+  e.style.display="block";
+  const col=player==="A"?"var(--blue)":"var(--pink)";
+  e.style.background=won?"var(--green-dim)":"var(--red-dim)";
+  e.style.border=won?"1px solid var(--green)":"1px solid var(--red)";
+  e.style.color=won?"var(--green)":"var(--red)";
+  e.innerHTML=won?"✓ GELÖST!":`✗ NICHT GELÖST — <span style='color:${col}'>${word}</span>`;
+}
+
+function rKB(id,hist,player){
+  const c=el(id);c.innerHTML="";
+  if(player==="A"?ST.doneA:ST.doneB)return;
+  KB.forEach(row=>{
+    const rowEl=document.createElement("div");rowEl.className="kb-row";
+    row.forEach(k=>{
+      const isEnter=k==="↵",isDel=k==="⌫";
+      const btn=document.createElement("button");
+      if(isEnter){
+        btn.className="key k-enter";
+        btn.textContent="ENTER ↵";
+      }else if(isDel){
+        btn.className="key k-del";btn.textContent="⌫";
+      }else{
+        btn.className="key";
+        const ks=kbSt(k,hist);
+        if(ks!=="unused")btn.classList.add("k"+ks[0]); // kc / kp / ka
+      }
+      if(!isEnter&&!isDel)btn.textContent=k;
+      btn.addEventListener("click",e=>{
+        e.stopPropagation();focusP=player;
+        if(isEnter){submitGuess(player);return;}
+        const pos=cur[player];
+        const cur2=inp[player]||"";
+        if(isDel){
+          const a=[];for(let i=0;i<5;i++)a.push(chars(cur2)[i]||" ");
+          a.splice(pos,1);a.push(" ");
+          inp[player]=a.join("").replace(/ +$/,"");
+          cur[player]=Math.max(0,pos-1);
+          render();
+        }else if(/^[A-ZÄÖÜß]$/.test(k)){
+          inp[player]=insertAt(cur2,pos,k);
+          cur[player]=Math.min(4,pos+1);
+          render();
+        }
+      });
+      rowEl.appendChild(btn);
+    });
+    c.appendChild(rowEl);
+  });
+}
+
+// ── RESULT ───────────────────────────────────────────────────────
+function sprintWinner(s){
+  // Sprint mode: effective time = finishTime + penalty(extraRows * timerMin)
+  if(!s.wonA&&!s.wonB)return null;
+  if(s.wonA&&!s.wonB)return s.nameA;
+  if(s.wonB&&!s.wonA)return s.nameB;
+  const tmMs=(s.timerMin||0)*60000;
+  const minRows=Math.min(s.histA.length,s.histB.length);
+  const penA=Math.max(0,s.histA.length-minRows)*tmMs;
+  const penB=Math.max(0,s.histB.length-minRows)*tmMs;
+  const startTime=s.rowStartA?s.rowStartA-(s.histA.length*(s.timerMin||0)*60000):0; // approx
+  const effA=(s.finishTimeA||0)+penA;
+  const effB=(s.finishTimeB||0)+penB;
+  return effA<=effB?s.nameA:s.nameB;
+}
+
+function rResult(){
+  const s=ST;
+  const attA=s.histA&&s.histA.length||0,attB=s.histB&&s.histB.length||0;
+  let winner="";
+  if(s.forfeitBy)winner=s.forfeitBy==="A"?s.nameB:s.nameA;
+  else if(s.sprint){winner=sprintWinner(s)||"";}
+  else{
+    if(s.wonA&&!s.wonB)winner=s.nameA;
+    else if(s.wonB&&!s.wonA)winner=s.nameB;
+    else if(s.wonA&&s.wonB)winner=attA<=attB?s.nameA:s.nameB;
+  }
+  const isA=winner===s.nameA;
+  const wt=el("winner-text");
+  wt.innerHTML=winner
+    ?`<span style='color:${isA?"var(--blue)":"var(--pink)"}'>${winner.toUpperCase()} GEWINNT! 🏆</span>`
+    :`<span style='color:var(--yellow)'>UNENTSCHIEDEN</span>`;
+  if(s.forfeitBy)wt.innerHTML+="<div style='color:var(--text3);font-size:11px;margin-top:8px'>durch Aufgabe</div>";
+  if(s.sprint)wt.innerHTML+="<div style='color:var(--text3);font-size:10px;margin-top:6px;letter-spacing:1px'>SPRINT-MODUS</div>";
+
+  const cards=el("result-cards");cards.innerHTML="";
+  [[s.nameA||"A","var(--blue)","var(--blue-border)",s.wonA,attA,s.wordListB&&s.wordListB[s.wordIdxA]||"?????",s.finishTimeA],
+   [s.nameB||"B","var(--pink)","var(--pink-border)",s.wonB,attB,s.wordListA&&s.wordListA[s.wordIdxB]||"?????",s.finishTimeB]].forEach(([name,col,dim,won,att,word,ft])=>{
+    const isW=winner===name;
+    const d=document.createElement("div");
+    d.style.cssText=`background:var(--bg2);border:1px solid ${isW?col:dim};border-radius:10px;padding:22px 28px;text-align:center;min-width:165px;${isW?"box-shadow:0 0 30px "+col.replace("var(","").replace(")","").trim()+"55":""}`;
+    d.innerHTML=(isW?"<div style='font-size:24px;margin-bottom:8px'>🏆</div>":"")
+      +`<div style='color:${col};font-size:11px;letter-spacing:4px;margin-bottom:10px'>${name.toUpperCase()}</div>`
+      +`<div style='color:var(--text);font-size:32px;font-weight:700;font-family:monospace'>${att}</div>`
+      +`<div style='color:var(--text3);font-size:10px;letter-spacing:2px;margin-bottom:10px'>VERSUCHE</div>`
+      +`<div style='color:${won?"var(--green)":"var(--red)"};font-size:12px;letter-spacing:2px'>${won?"✓ GELÖST":"✗ NICHT GELÖST"}</div>`
+      +`<div style='color:var(--text3);font-size:10px;margin-top:8px'>Wort: <span style='color:${col};font-family:monospace'>${word}</span></div>`;
+    cards.appendChild(d);
+  });
+}
+
+// ── STATS ────────────────────────────────────────────────────────
+async function saveResult(s){
+  const attA=s.histA&&s.histA.length||0,attB=s.histB&&s.histB.length||0;
+  let winner="";
+  if(s.forfeitBy)winner=s.forfeitBy==="A"?s.nameB:s.nameA;
+  else if(s.sprint){winner=sprintWinner(s)||"";}
+  else{
+    if(s.wonA&&!s.wonB)winner=s.nameA;
+    else if(s.wonB&&!s.wonA)winner=s.nameB;
+    else if(s.wonA&&s.wonB)winner=attA<=attB?s.nameA:s.nameB;
+  }
+  const entry={
+    date:new Date().toLocaleDateString("de-DE"),
+    time:new Date().toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}),
+    playerA:s.nameA||"A",playerB:s.nameB||"B",
+    attemptsA:attA,attemptsB:attB,
+    wonA:!!s.wonA,wonB:!!s.wonB,
+    forfeit:s.forfeitBy||"",winner,sprint:!!s.sprint
+  };
+  const cur=await fsR("duel/stats")||{games:[]};
+  cur.games=[...(cur.games||[]),entry];
+  await fsW("duel/stats",cur);
+}
+
+window.showAdmin=function(){
+  adminOpen=true;el("admin-panel").style.display="flex";
+  el("admin-login-div").style.display="block";el("admin-content").style.display="none";
+  el("admin-msg").textContent="";el("admin-pw").value="";
+};
+window.closeAdmin=function(){adminOpen=false;el("admin-panel").style.display="none";};
+window.checkPw=async function(){
+  if(el("admin-pw").value===ADMIN_PW){
+    el("admin-login-div").style.display="none";el("admin-content").style.display="block";
+    await loadStats();
+  }else el("admin-msg").textContent="Falsches Passwort";
+};
+async function loadStats(){
+  const data=await fsR("duel/stats");const games=data&&data.games||[];
+  const list=el("stats-list");
+  if(!games.length){list.innerHTML="<div style='color:var(--text3);font-size:12px;text-align:center;padding:16px'>Noch keine Spiele</div>";return;}
+  list.innerHTML=`<div style='color:var(--text3);font-size:10px;letter-spacing:2px;margin-bottom:12px'>${games.length} SPIELE</div>`
+    +[...games].reverse().map(g=>`<div class='stat-row'>
+      <div><div style='color:var(--text);font-size:12px'>${g.date} ${g.time}${g.sprint?" ⚡":""}</div>
+      <div style='color:var(--text3);font-size:10px;margin-top:2px'>${g.playerA} vs ${g.playerB}</div></div>
+      <div style='text-align:right'>
+        <div style='color:${g.winner===g.playerA?"var(--blue)":"var(--pink)"};font-size:12px;font-weight:700'>${g.winner||"—"}</div>
+        <div style='color:var(--text3);font-size:10px'>${g.attemptsA} : ${g.attemptsB} Versuche</div>
+        ${g.forfeit?`<div style='color:var(--red);font-size:9px'>Aufgabe</div>`:""}
+      </div></div>`).join("");
+}
+window.clearStats=async function(){if(!confirm("Wirklich löschen?"))return;await fsW("duel/stats",{games:[]});await loadStats();};
+
+// ── HELPERS ──────────────────────────────────────────────────────
+function el(id){return document.getElementById(id);}
+function g(id){return document.getElementById(id);}
+function D(id,show,disp){const e=el(id);if(e)e.style.display=show?(disp||"block"):"none";}
+function toast(m,d){const e=el("toast");e.textContent=m;e.style.display="block";clearTimeout(e._t);e._t=setTimeout(()=>e.style.display="none",d||2500);}
+
+// Side focus
+el("side-a").addEventListener("click",()=>focusP="A");
+el("side-b").addEventListener("click",()=>focusP="B");
+
+// QR Code
+setTimeout(()=>{
+  try{new QRCode(el("qrcode"),{
+    text:"https://disswurdjetztaberauchzeit.github.io/wordle-duell/",
+    width:120,height:120,colorDark:"#111",colorLight:"#fff",
+    correctLevel:QRCode.CorrectLevel.M
+  });}catch(e){console.warn("QR:",e);}
+},300);
+
+sub();
+</script>
+</body>
+</html>
