@@ -196,7 +196,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="panel" style="border-color:var(--blue-border);min-width:280px;flex:1">
       <div id="pick-ta" style="color:var(--blue);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
       <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
-      <input type="text" id="pick-a" placeholder="HUNDE, GRÖßE, ÜBUNG..."
+      <input type="text" id="pick-a" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
         oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('A')"/>
       <div id="pick-ma" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
       <div id="pick-da" style="display:none;color:var(--green);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
@@ -205,7 +205,7 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
     <div class="panel" style="border-color:var(--pink-border);min-width:280px;flex:1">
       <div id="pick-tb" style="color:var(--pink);font-size:10px;letter-spacing:3px;margin-bottom:12px;font-weight:700"></div>
       <div style="color:var(--text3);font-size:10px;margin-bottom:6px">Wörter komma-getrennt, je 5 Buchstaben (Umlaute OK: Ä Ö Ü ß):</div>
-      <input type="text" id="pick-b" placeholder="HUNDE, GRÖßE, ÜBUNG..."
+      <input type="text" id="pick-b" placeholder="HUNDE, GRÖSSE, ÜBUNG..."
         oninput="normPick(this)" onkeydown="if(event.key==='Enter')submitPick('B')"/>
       <div id="pick-mb" style="color:var(--red);font-size:10px;min-height:14px;margin:4px 0 8px"></div>
       <div id="pick-db" style="display:none;color:var(--pink);font-size:11px;letter-spacing:2px;text-align:center;padding:10px">✅ WÖRTER GESETZT — warte auf Gegner…</div>
@@ -618,6 +618,19 @@ document.addEventListener("keydown",e=>{
 // ── RENDER ───────────────────────────────────────────────────────
 function render(){
   if(!ST)return;
+
+  // If this browser has not logged in yet, always show the correct login screen
+  if(!myRole){
+    const aFree = ST.phase==="login-a" || !ST.nameA;
+    const bFree = !aFree && (ST.phase==="login-b" || !ST.nameB);
+    D("s-la", aFree || (!aFree && !bFree)); // show A login if A-free OR both taken
+    D("s-lb", bFree);
+    D("s-pick",false); D("s-play",false); D("s-result",false);
+    el("phase-label").textContent="ANMELDEN";
+    if(bFree) rLoginB();
+    return;
+  }
+
   const labels={"login-a":"ANMELDEN","login-b":"ANMELDEN","pick":"WÖRTER WÄHLEN","play":"DUELL","result":"ERGEBNIS"};
   el("phase-label").textContent=labels[ST.phase]||"";
   D("s-la",ST.phase==="login-a");
@@ -886,6 +899,9 @@ setTimeout(()=>{
     correctLevel:QRCode.CorrectLevel.M
   });}catch(e){console.warn("QR:",e);}
 },300);
+
+// Show login immediately before Firebase responds
+el("s-la").style.display="block";
 
 sub();
 </script>
